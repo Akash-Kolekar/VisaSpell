@@ -127,7 +127,7 @@ contract VisaDocument is AccessControl, Pausable {
         app.updatedAt = block.timestamp;
 
         emit DocumentSubmitted(msg.sender, docType, documentHash);
-        _checkTimelineCritical(msg.sender);
+        // _checkTimelineCritical(msg.sender);
     }
 
     function resubmitDocument(DocumentType docType, string calldata newHash) external onlyApplicant {
@@ -215,8 +215,8 @@ contract VisaDocument is AccessControl, Pausable {
 
     // Admin Functions
     function updateFees(uint256 newAppFee, uint256 newVisaFee) external onlyRole(ADMIN_ROLE) {
-        APPLICATION_FEE = newAppFee;
-        VISA_FEE = newVisaFee;
+        // APPLICATION_FEE = newAppFee;
+        // VISA_FEE = newVisaFee;
         emit FeesUpdated(newAppFee, newVisaFee);
     }
 

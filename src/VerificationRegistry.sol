@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /// @title VerificationRegistry
 /// @notice Manages verifier credentials and reputation for the visa application system
