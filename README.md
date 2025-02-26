@@ -1,66 +1,84 @@
-## Foundry
+A blockchain-based visa processing system could address several key challenges:
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Problems:
+- Long processing times due to manual document verification
+- Lack of transparency in application status
+- Document authenticity verification across multiple institutions
+- Redundant document submissions to different authorities
+- Risk of document fraud
+- Coordination delays between universities, embassies, and immigration
 
-Foundry consists of:
+Potential Solution Features:
+1. Smart Contracts for:
+- Automated document verification
+- Conditional visa approval based on university acceptance
+- Background check coordination
+- Fee processing
+- Deadline tracking
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+2. Document Management:
+- Encrypted academic records
+- Digital identity verification
+- Permanent record of verified documents
+- Single source of truth for all stakeholders
 
-## Documentation
+3. Process Optimization:
+- Parallel processing of requirements
+- Real-time status updates
+- Automated notifications for missing documents
+- Integration with university enrollment systems
 
-https://book.getfoundry.sh/
+Here's a macro view of the student visa blockchain system:
 
-## Usage
+Architecture:
+- Smart Contracts: Build on Ethereum/Polygon for lower fees
+- Backend: Node.js + Web3.js for blockchain interaction
+- Frontend: React + MetaMask integration
+- Storage: IPFS for document storage, Ethereum for verification hashes
 
-### Build
+Key Components:
 
-```shell
-$ forge build
-```
+1. Document Management Contract
+- Handles academic records, passport, financial docs
+- Documents stored on IPFS, hashes on blockchain
+- Access control for different stakeholders
 
-### Test
+2. Verification Contract
+- Universities verify enrollment/acceptance
+- Embassy verifies background checks
+- Banks verify financial statements
+- Smart contract tracks verified documents
 
-```shell
-$ forge test
-```
+3. Visa Processing Contract
+- Automated checklist verification
+- Status tracking
+- Conditional approval logic
+- Timeline management
 
-### Format
+4. User Interface
+- Student dashboard for document upload
+- Embassy/University portal for verification
+- Progress tracking
+- Notification system
 
-```shell
-$ forge fmt
-```
 
-### Gas Snapshots
+src/
+├── VisaDocument.sol          # Main contract for document and application management
+├── VerificationRegistry.sol  # Manages verifier credentials and reputation
+└── interfaces/
+    ├── IVisaDocument.sol     # Interface for VisaDocument
+    └── IVerificationRegistry.sol # Interface for verification registry
 
-```shell
-$ forge snapshot
-```
+1. VisaDocument.sol
 
-### Anvil
+Handles student visa application lifecycle
+Manages document submission, verification, and status
+Implements role-based access control
+Tracks critical timelines for enrollment
 
-```shell
-$ anvil
-```
+2. VerificationRegistry.sol
 
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Stores official verifier credentials (universities, embassies)
+Manages verification history
+Implements reputation system for verifiers
+Allows verification authority delegation

@@ -1,25 +1,47 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// Layout of Contract:
+// version
+// imports
+// interfaces, libraries, contracts
+// errors
+// Type declarations
+// State variables
+// Events
+// Modifiers
+// Functions
+
+// Layout of Functions:
+// constructor
+// receive function (if exists)
+// fallback function (if exists)
+// external
+// public
+// internal
+// private
+// view & pure functions
+
+/**
+ * @title VisaProcessing
+ * @author Akash Kolekar
+ * @notice This contract is a simple contract to manage the visa processing for students
+ * @dev The VisaDocument contract is a simple contract to manage the visa processing for students
+ * It allows students to submit their documents and get them verified by the university, embassy and bank
+ * The contract also allows the students to pay the application fee and visa fee
+ *
+ */
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// @title VisaDocument
+/// @notice Contract for managing document verification in student visa applications
 contract VisaDocument is AccessControl, Pausable {
-    using SafeERC20 for IERC20;
-
-    // Roles
     bytes32 public constant UNIVERSITY_ROLE = keccak256("UNIVERSITY_ROLE");
     bytes32 public constant EMBASSY_ROLE = keccak256("EMBASSY_ROLE");
     bytes32 public constant BANK_ROLE = keccak256("BANK_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // Fees
-    uint256 public constant APPLICATION_FEE = 0.1 ether;
-    uint256 public constant VISA_FEE = 0.5 ether;
-    address public feeRecipient; // Secure wallet for fee collection
-
-    // Document and Status Enums
     enum DocumentType {
         PASSPORT,
         ACADEMIC_RECORDS,
@@ -44,7 +66,6 @@ contract VisaDocument is AccessControl, Pausable {
         REJECTED
     }
 
-    // Application Structure
     struct Document {
         string documentHash;
         VerificationStatus status;
@@ -61,15 +82,11 @@ contract VisaDocument is AccessControl, Pausable {
         uint256 updatedAt;
         string universityId;
         uint256 expectedEnrollmentDate;
-        bool applicationFeePaid;
-        bool visaFeePaid;
     }
 
-    // State Variables
     mapping(address => Application) public applications;
     mapping(address => bool) public hasApplication;
 
-    // Events
     event ApplicationCreated(address indexed applicant, uint256 timestamp);
     event DocumentSubmitted(address indexed applicant, DocumentType docType, string documentHash);
     event DocumentVerified(address indexed applicant, DocumentType docType, address verifier);
@@ -77,26 +94,29 @@ contract VisaDocument is AccessControl, Pausable {
     event ApplicationStatusUpdated(address indexed applicant, VisaStatus status);
     event ApplicationRejected(address indexed applicant, string reason);
     event TimelineCritical(address indexed applicant, uint256 daysUntilEnrollment);
-    event FeesUpdated(uint256 newApplicationFee, uint256 newVisaFee);
-    event FeesPaid(address indexed applicant, uint256 amount, bool isVisaFee);
 
-    constructor(address _feeRecipient) {
+    constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
-        feeRecipient = _feeRecipient;
     }
 
-    // Modifiers
+    //Modifiers
     modifier onlyApplicant() {
         require(hasApplication[msg.sender], "No application exists");
         _;
     }
 
-    // Core Functions
-    function createApplication(string calldata universityId, uint256 enrollmentDate) external payable {
-        require(!hasApplication[msg.sender], "Application exists");
-        require(enrollmentDate > block.timestamp, "Invalid enrollment date");
-        require(msg.value == APPLICATION_FEE, "Incorrect application fee");
+    //////////////
+    //Functions //
+    //////////////
+
+    //////////////////////////
+    /// External Functions ///
+    //////////////////////////
+
+    function createApplication(string calldata universityId, uint256 enrollmentDate) external {
+        require(!hasApplication[msg.sender], "Application already exists");
+        require(enrollmentDate > block.timestamp, "Enrollment date must be in the future");
 
         Application storage app = applications[msg.sender];
         app.applicant = msg.sender;
@@ -105,10 +125,8 @@ contract VisaDocument is AccessControl, Pausable {
         app.updatedAt = block.timestamp;
         app.universityId = universityId;
         app.expectedEnrollmentDate = enrollmentDate;
-        app.applicationFeePaid = true;
 
         hasApplication[msg.sender] = true;
-        _safeTransferETH(msg.value);
 
         emit ApplicationCreated(msg.sender, block.timestamp);
     }
@@ -117,16 +135,19 @@ contract VisaDocument is AccessControl, Pausable {
         require(bytes(documentHash).length > 0, "Empty document hash");
 
         Application storage app = applications[msg.sender];
-        require(app.status != VisaStatus.APPROVED, "Application approved");
-        require(app.status != VisaStatus.REJECTED, "Application rejected");
+
+        require(app.status != VisaStatus.APPROVED, "Application already approved");
+        require(app.status != VisaStatus.REJECTED, "Application already rejected");
 
         Document storage doc = app.documents[docType];
         doc.documentHash = documentHash;
         doc.status = VerificationStatus.SUBMITTED;
         doc.timestamp = block.timestamp;
+
         app.updatedAt = block.timestamp;
 
         emit DocumentSubmitted(msg.sender, docType, documentHash);
+
         _checkTimelineCritical(msg.sender);
     }
 
@@ -146,53 +167,55 @@ contract VisaDocument is AccessControl, Pausable {
         emit DocumentSubmitted(msg.sender, docType, newHash);
     }
 
-    // Verification Functions
     function verifyDocument(address applicant, DocumentType docType) external {
         require(
             hasRole(UNIVERSITY_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender) || hasRole(BANK_ROLE, msg.sender),
-            "Unauthorized"
+            "Not authorized to verify documents"
         );
+
+        require(hasApplication[applicant], "Application does not exist");
 
         Application storage app = applications[applicant];
         Document storage doc = app.documents[docType];
 
-        require(doc.status == VerificationStatus.SUBMITTED, "Document not submitted");
+        require(doc.status == VerificationStatus.SUBMITTED, "Document not submitted or already verified");
 
         doc.status = VerificationStatus.VERIFIED;
         doc.verifiedBy = msg.sender;
         doc.timestamp = block.timestamp;
+
         app.updatedAt = block.timestamp;
 
         emit DocumentVerified(applicant, docType, msg.sender);
+
         _checkAllDocumentsVerified(applicant);
     }
 
-    // Fee Payment Functions
-    function payVisaFee() external payable onlyApplicant {
-        Application storage app = applications[msg.sender];
-        require(app.status == VisaStatus.APPROVED, "Visa not approved");
-        require(msg.value == VISA_FEE, "Incorrect visa fee");
+    function rejectDocument(address applicant, DocumentType docType, string calldata reason) external {
+        require(
+            hasRole(UNIVERSITY_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender) || hasRole(BANK_ROLE, msg.sender),
+            "Not authorized to reject documents"
+        );
 
-        app.visaFeePaid = true;
-        _safeTransferETH(msg.value);
-        emit FeesPaid(msg.sender, msg.value, true);
-    }
+        require(hasApplication[applicant], "Application does not exist");
 
-    // View Functions
-    function getDocumentHashes(address applicant) external view returns (string[5] memory) {
-        require(hasApplication[applicant], "No application");
         Application storage app = applications[applicant];
+        Document storage doc = app.documents[docType];
 
-        return [
-            app.documents[DocumentType.PASSPORT].documentHash,
-            app.documents[DocumentType.ACADEMIC_RECORDS].documentHash,
-            app.documents[DocumentType.FINANCIAL_PROOF].documentHash,
-            app.documents[DocumentType.ACCEPTANCE_LETTER].documentHash,
-            app.documents[DocumentType.BACKGROUND_CHECK].documentHash
-        ];
+        require(doc.status == VerificationStatus.SUBMITTED, "Document not submitted or already processed");
+
+        doc.status = VerificationStatus.REJECTED;
+        doc.verifiedBy = msg.sender;
+        doc.timestamp = block.timestamp;
+        doc.comments = reason;
+
+        app.status = VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED;
+        app.updatedAt = block.timestamp;
+
+        emit DocumentRejected(applicant, docType, msg.sender, reason);
+        emit ApplicationStatusUpdated(applicant, VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED);
     }
 
-    // Internal Functions
     function _checkAllDocumentsVerified(address applicant) internal {
         Application storage app = applications[applicant];
 
@@ -202,25 +225,65 @@ contract VisaDocument is AccessControl, Pausable {
             && app.documents[DocumentType.ACCEPTANCE_LETTER].status == VerificationStatus.VERIFIED
             && app.documents[DocumentType.BACKGROUND_CHECK].status == VerificationStatus.VERIFIED;
 
+        // Check if all required documents are verified
         if (allVerified) {
             app.status = VisaStatus.UNDER_REVIEW;
             emit ApplicationStatusUpdated(applicant, VisaStatus.UNDER_REVIEW);
         }
     }
 
-    function _safeTransferETH(uint256 amount) internal {
-        (bool success,) = feeRecipient.call{value: amount}("");
-        require(success, "ETH transfer failed");
+    function _checkTimelineCritical(address applicant) internal {
+        Application storage app = applications[applicant];
+
+        uint256 daysUntilEnrollment = (app.expectedEnrollmentDate - block.timestamp) / 1 days;
+
+        if (daysUntilEnrollment <= 30) {
+            emit TimelineCritical(applicant, daysUntilEnrollment);
+        }
     }
 
-    // Admin Functions
-    function updateFees(uint256 newAppFee, uint256 newVisaFee) external onlyRole(ADMIN_ROLE) {
-        APPLICATION_FEE = newAppFee;
-        VISA_FEE = newVisaFee;
-        emit FeesUpdated(newAppFee, newVisaFee);
+    function approveVisa(address applicant) external {
+        require(hasRole(EMBASSY_ROLE, msg.sender), "Only embassy can approve visa");
+        require(hasApplication[applicant], "Application does not exist");
+
+        Application storage app = applications[applicant];
+        require(app.status == VisaStatus.UNDER_REVIEW, "Application not under review");
+
+        app.status = VisaStatus.APPROVED;
+        app.updatedAt = block.timestamp;
+
+        emit ApplicationStatusUpdated(applicant, VisaStatus.APPROVED);
     }
 
-    function emergencyWithdraw() external onlyRole(ADMIN_ROLE) {
-        payable(feeRecipient).transfer(address(this).balance);
+    function rejectVisa(address applicant, string calldata reason) external {
+        require(hasRole(EMBASSY_ROLE, msg.sender), "Only embassy can reject visa");
+        require(hasApplication[applicant], "Application does not exist");
+
+        Application storage app = applications[applicant];
+        require(app.status != VisaStatus.APPROVED && app.status != VisaStatus.REJECTED, "Application already processed");
+
+        app.status = VisaStatus.REJECTED;
+        app.updatedAt = block.timestamp;
+
+        emit ApplicationStatusUpdated(applicant, VisaStatus.REJECTED);
+        emit ApplicationRejected(applicant, reason);
+    }
+
+    function getDocumentStatus(address applicant, DocumentType docType) external view returns (VerificationStatus) {
+        require(hasApplication[applicant], "Application does not exist");
+        return applications[applicant].documents[docType].status;
+    }
+
+    function getApplicationStatus(address applicant) external view returns (VisaStatus) {
+        require(hasApplication[applicant], "Application does not exist");
+        return applications[applicant].status;
+    }
+
+    function pause() external onlyRole(ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(ADMIN_ROLE) {
+        _unpause();
     }
 }
