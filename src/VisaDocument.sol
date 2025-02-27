@@ -84,8 +84,46 @@ contract VisaDocument is AccessControl, Pausable {
         uint256 expectedEnrollmentDate;
     }
 
-    mapping(address => Application) public applications;
-    mapping(address => bool) public hasApplication;
+    mapping(address => Application) private applications;
+    mapping(address => bool) private hasApplication;
+
+    function getApplications(address _applicant, uint docType) external view returns(
+        address applicant,
+        uint256 visaStatus,
+        uint256 createdAt,
+        uint256 updatedAt,
+        string memory universityId,
+        uint256 expectedEnrollmentDate,
+        /* 👇 nested struct in ``Application.documents``👇 */
+        string memory documentHash,
+        uint256 documentStatus,
+        address verifiedBy,
+        uint256 timestamp,
+        string memory comments
+    ) {
+        Application storage details = applications[_applicant];
+
+        applicant = details.applicant;
+        visaStatus = uint256(details.status);
+        createdAt = details.createdAt;
+        updatedAt = details.updatedAt;
+        universityId = details.universityId;
+        expectedEnrollmentDate = details.expectedEnrollmentDate;
+
+
+        /* 👇 nested struct in ``Application.documents``👇 */
+        Document storage doc = details.documents[DocumentType(docType)];
+
+        documentHash = doc.documentHash;
+        documentStatus = uint256(doc.status);
+        verifiedBy = doc.verifiedBy;
+        timestamp = doc.timestamp;
+        comments = doc.comments;
+    }
+
+    function checkApplication(address _applicant) external view returns(bool) {
+        return hasApplication[_applicant];
+    }
 
     event ApplicationCreated(address indexed applicant, uint256 timestamp);
     event DocumentSubmitted(address indexed applicant, DocumentType docType, string documentHash);
