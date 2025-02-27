@@ -33,13 +33,59 @@ contract UniversityRegistry is AccessControl, Pausable {
     }
 
     // University ID => University
-    mapping(string => University) public universities;
+    mapping(string => University) private universities;
+
+    function getUniversityDetails(string calldata universityId) external view returns (
+        string memory name,
+        string memory country,
+        string memory accreditationId,
+        bool isVerified,
+        bool isActive,
+        uint registeredAt,
+        uint lastUpdated,
+        address[] memory authorizedSigners
+    ) {
+        University storage university = universities[universityId];
+
+        name = university.name;
+        country = university.country;
+        accreditationId = university.accreditationId;
+        isVerified = university.isVerified;
+        isActive = university.isActive;
+        registeredAt = university.registeredAt;
+        lastUpdated = university.lastUpdated;
+        authorizedSigners = university.authorizedSigners;
+    }
 
     // Program ID => Program
-    mapping(string => Program) public programs;
+    mapping(string => Program) private programs;
+
+    function getPrograms(string calldata _universityId) external view returns(
+        string memory programId,
+        string memory universityId,
+        string memory name,
+        string memory degreeLevel,
+        uint256 durationMonths,
+        bool requiresVisa,
+        bool isActive
+    ) {
+        Program memory program = programs[_universityId];
+
+        programId = program.programId;
+        universityId = program.universityId;
+        name = program.name;
+        degreeLevel = program.degreeLevel;
+        durationMonths = program.durationMonths;
+        requiresVisa = program.requiresVisa;
+        isActive = program.isActive;
+    }
 
     // Address => University ID
-    mapping(address => string) public signerToUniversity;
+    mapping(address => string) private signerToUniversity;
+
+    function checkUniversity(address _user) external view returns(string memory) {
+        return signerToUniversity[_user];
+    }
 
     // Array of all university IDs
     string[] public universityList;
