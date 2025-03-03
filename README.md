@@ -1,6 +1,6 @@
-A blockchain-based visa processing system could address several key challenges:
+## A blockchain-based visa processing system could address several key challenges:
 
-Problems:
+**Problems:**
 - Long processing times due to manual document verification
 - Lack of transparency in application status
 - Document authenticity verification across multiple institutions
@@ -8,7 +8,7 @@ Problems:
 - Risk of document fraud
 - Coordination delays between universities, embassies, and immigration
 
-Potential Solution Features:
+**Potential Solution Features:**
 1. Smart Contracts for:
 - Automated document verification
 - Conditional visa approval based on university acceptance
@@ -28,15 +28,15 @@ Potential Solution Features:
 - Automated notifications for missing documents
 - Integration with university enrollment systems
 
-Here's a macro view of the student visa blockchain system:
+## Here's a macro view of the student visa blockchain system:
 
-Architecture:
+**Architecture:**
 - Smart Contracts: Build on Ethereum/Polygon for lower fees
 - Backend: Node.js + Web3.js for blockchain interaction
 - Frontend: React + MetaMask integration
 - Storage: IPFS for document storage, Ethereum for verification hashes
 
-Key Components:
+**Key Components:**
 
 1. Document Management Contract
 - Handles academic records, passport, financial docs
@@ -61,22 +61,25 @@ Key Components:
 - Progress tracking
 - Notification system
 
+## Scoop
 
+```bash
 src/
-├── VisaDocument.sol          # Main contract for document and application management
-├── VerificationRegistry.sol  # Manages verifier credentials and reputation
+├── VisaDocument.sol              # Main contract for document and application management
+├── VerificationRegistry.sol      # Manages verifier credentials and reputation
 └── interfaces/
-    ├── IVisaDocument.sol     # Interface for VisaDocument
+    ├── IVisaDocument.sol         # Interface for VisaDocument
     └── IVerificationRegistry.sol # Interface for verification registry
+```
 
-1. VisaDocument.sol
+**`VisaDocument.sol`**
 
 Handles student visa application lifecycle
 Manages document submission, verification, and status
 Implements role-based access control
 Tracks critical timelines for enrollment
 
-2. VerificationRegistry.sol
+**`VerificationRegistry.sol`**
 
 Stores official verifier credentials (universities, embassies)
 Manages verification history
