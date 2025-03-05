@@ -15,6 +15,36 @@ import {IFeeManager} from "./interface/IFeeManager.sol";
 /// @notice This is the main contract for the Student Visa System
 /// @dev This contract is used to manage the student visa application process
 contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
+    error StudentVisaSystem__ApplicationAlreadyExists();
+    error StudentVisaSystem__EnrollmentDateMustBeInFuture();
+    error StudentVisaSystem__EnrollmentDateTooFar();
+    error StudentVisaSystem__InvalidProgram();
+    error StudentVisaSystem__InsufficientFeePaid();
+
+    error StudentVisaSystem__ApplicationNotFound();
+    error StudentVisaSystem__Unauthorized();
+
+    error StudentVisaSystem__BiometricsVerified();
+    error StudentVisaSystem__ApplicationNotUnderReview();
+    error StudentVisaSystem__ReviewAlreadyAuthorized();
+
+    error StudentVisaSystem__OnlyUpgradePriority();
+    error StudentVisaSystem__InsufficientAdditionalFee();
+    error StudentVisaSystem__ApplicationNotUnderApproval();
+
+    error StudentVisaSystem__ApplicationAlreadyProcessed();
+    error StudentVisaSystem__WithdrawalFailed();
+    error StudentVisaSystem__CannotModifyFinalizedApplication();
+
+    error StudentVisaSystem__InvalidStatusUpdate();
+    error StudentVisaSystem__ApplicationNotRejected();
+
+    error StudentVisaSystem__ApplicationAlreadyApproved();
+    error StudentVisaSystem__ApplicationAlreadyRejected();
+
+    error StudentVisaSystem__DocumentExpired();
+    error StudentVisaSystem__DocumentNotSubmittedNotVerified();
+
     /////////////////////////////
     ///// State Variables ///////
     /////////////////////////////
@@ -165,10 +195,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         Priority priority,
         string[] calldata previousVisaCountries
     ) external payable {
-        require(!hasApplication[msg.sender], "Application already exists");
-        require(enrollmentDate > block.timestamp, "Enrollment date must be in future");
-        require(enrollmentDate < block.timestamp + 365 days, "Date too far");
-        require(universityHandler.isValidProgram(universityId, programId), "Invalid program");
+        if (hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationAlreadyExists();
+        if (enrollmentDate <= block.timestamp) revert StudentVisaSystem__EnrollmentDateMustBeInFuture();
+        if (enrollmentDate >= block.timestamp + 365 days) revert StudentVisaSystem__EnrollmentDateTooFar();
+        if (!universityHandler.isValidProgram(universityId, programId)) revert StudentVisaSystem__InvalidProgram();
 
         // Determine required fee and processing time
         (uint256 requiredFee, uint32 processingTime) = getFeeAndProcessingTime(priority);
@@ -179,7 +209,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         }
 
         // Verify total payments meet requirement
-        require(feeManager.getTotalPaid(msg.sender) >= requiredFee, "Insufficient fee paid");
+        if (feeManager.getTotalPaid(msg.sender) < requiredFee) revert StudentVisaSystem__InsufficientFeePaid();
 
         // Initialize application
         Application storage app = applications[msg.sender];
@@ -209,8 +239,11 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     function submitDocument(address applicant, DocumentType docType, string calldata documentHash, uint256 expiryDate)
         external
     {
-        require(hasApplication[applicant], "No application exists");
-        require(applicant == msg.sender || hasRole(UNIVERSITY_ROLE, msg.sender), "Unauthorized");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
+        if (
+            applicant != msg.sender && 
+            hasRole(UNIVERSITY_ROLE, msg.sender)
+        ) revert StudentVisaSystem__Unauthorized();
 
         Application storage app = applications[applicant];
         _validateDocumentSubmission(app);
@@ -227,10 +260,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     // Feature 3: Biometric verification
     function submitBiometricVerification(string calldata biometricHash) external {
-        require(hasApplication[msg.sender], "No application exists");
+        if (!hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[msg.sender];
-        require(!app.isBiometricVerified, "Biometrics already verified");
+        if (app.isBiometricVerified) revert StudentVisaSystem__BiometricsVerified();
 
         app.isBiometricVerified = true;
         app.updatedAt = block.timestamp;
@@ -246,10 +279,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         external
         onlyRole(EMBASSY_ROLE)
     {
-        require(hasApplication[applicant], "Application does not exist");
+        if (!hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        require(app.status == VisaStatus.UNDER_REVIEW, "Application not under review");
+        if (app.status != VisaStatus.UNDER_REVIEW) revert StudentVisaSystem__ApplicationNotUnderReview();
 
         app.status = VisaStatus.CONDITIONALLY_APPROVED;
         app.timeline.deadlineDate = conditionDeadline;
@@ -260,10 +293,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     // Feature 6: Selective disclosure authorization
     function authorizeViewer(address viewer) external {
-        require(hasApplication[msg.sender], "No application exists");
+        if (!hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[msg.sender];
-        require(!app.authorizedViewers[viewer], "Viewer already authorized");
+        if (app.authorizedViewers[viewer]) revert StudentVisaSystem__ReviewAlreadyAuthorized();
 
         app.authorizedViewers[viewer] = true;
 
@@ -272,10 +305,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     // Feature 7: Emergency processing upgrade
     function upgradeProcessingPriority(Priority newPriority) external payable {
-        require(hasApplication[msg.sender], "No application exists");
+        if (!hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[msg.sender];
-        require(app.timeline.priority < newPriority, "Can only upgrade priority");
+        if (app.timeline.priority >= newPriority) revert StudentVisaSystem__OnlyUpgradePriority();
 
         uint256 additionalFee;
         if (newPriority == Priority.EXPEDITED) {
@@ -288,7 +321,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
             }
         }
 
-        require(msg.value >= additionalFee, "Insufficient additional fee");
+        if (msg.value < additionalFee) revert StudentVisaSystem__InsufficientAdditionalFee();
 
         app.timeline.priority = newPriority;
         if (newPriority == Priority.EXPEDITED) {
@@ -307,9 +340,9 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // Feature 9: Verifier reputation system
 
     function verifyDocument(address applicant, DocumentType docType, string calldata verificationProof) external {
-        require(_isAuthorizedVerifier(), "Not authorized to verify documents");
+        if (!_isAuthorizedVerifier()) revert StudentVisaSystem__Unauthorized();
 
-        require(hasApplication[applicant], "Application does not exist");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
         Document storage doc = app.documents[docType];
@@ -329,13 +362,13 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function approveVisa(address applicant) external onlyRole(EMBASSY_ROLE) nonReentrant {
-        require(hasApplication[applicant], "Application does not exist");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        require(
-            app.status == VisaStatus.UNDER_REVIEW || app.status == VisaStatus.CONDITIONALLY_APPROVED,
-            "Application not in approvable state"
-        );
+        if (
+            app.status != VisaStatus.UNDER_REVIEW &&
+            app.status != VisaStatus.CONDITIONALLY_APPROVED
+        ) revert StudentVisaSystem__ApplicationNotUnderApproval();
 
         app.status = VisaStatus.APPROVED;
         app.updatedAt = block.timestamp;
@@ -346,10 +379,13 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function rejectVisa(address applicant, string calldata reason) external onlyRole(EMBASSY_ROLE) nonReentrant {
-        require(hasApplication[applicant], "Application does not exist");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        require(app.status != VisaStatus.APPROVED && app.status != VisaStatus.REJECTED, "Application already processed");
+        if (
+            app.status == VisaStatus.APPROVED || 
+            app.status != VisaStatus.REJECTED
+        ) revert StudentVisaSystem__ApplicationAlreadyProcessed();
 
         app.status = VisaStatus.REJECTED;
         app.updatedAt = block.timestamp;
@@ -365,7 +401,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // Administrative functions
     function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
-    }
+    }   
 
     function unpause() external onlyRole(ADMIN_ROLE) {
         _unpause();
@@ -373,8 +409,11 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     // Allow withdrawal of fees by admin
     function withdrawFees(address payable recipient, uint256 amount) external onlyRole(ADMIN_ROLE) nonReentrant {
-        require(amount <= address(this).balance, "Insufficient balance");
-        recipient.transfer(amount);
+        // @audit: is the checks really necessary? since solidity will revert underflow value
+        require(amount <= address(this).balance, "Insufficient balance"); 
+        (bool sent, ) = recipient.call{value: amount}("");
+        if (!sent) revert StudentVisaSystem__WithdrawalFailed();
+        // recipient.transfer(amount);
     }
 
     function setVerificationHub(address _hub) external onlyRole(ADMIN_ROLE) {
@@ -386,16 +425,17 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function updateApplicationStatus(address applicant, VisaStatus newStatus) external onlyRole(EMBASSY_ROLE) {
-        require(hasApplication[applicant], "Application does not exist");
-        require(
-            applications[applicant].status != VisaStatus.APPROVED
-                && applications[applicant].status != VisaStatus.REJECTED,
-            "Cannot modify finalized applications"
-        );
-        require(
-            newStatus == VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED || newStatus == VisaStatus.UNDER_REVIEW,
-            "Invalid status update"
-        );
+        if (
+            !hasApplication[applicant]
+        ) revert StudentVisaSystem__ApplicationNotFound();
+        if (
+            applications[applicant].status == VisaStatus.APPROVED || 
+            applications[applicant].status == VisaStatus.REJECTED
+        ) revert StudentVisaSystem__CannotModifyFinalizedApplication();
+        if (
+            newStatus != VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED && 
+            newStatus != VisaStatus.UNDER_REVIEW
+        ) revert StudentVisaSystem__InvalidStatusUpdate();
 
         applications[applicant].status = newStatus;
         applications[applicant].updatedAt = block.timestamp;
@@ -404,7 +444,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function resetApplication() external {
-        require(applications[msg.sender].status == VisaStatus.REJECTED, "Not rejected");
+        if (
+            applications[msg.sender].status != VisaStatus.REJECTED
+        ) revert StudentVisaSystem__ApplicationNotRejected();
+        
         delete applications[msg.sender];
         hasApplication[msg.sender] = false;
     }
@@ -458,12 +501,13 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function _validateDocumentSubmission(Application storage app) internal view {
-        require(app.status != VisaStatus.APPROVED, "Application already approved");
-        require(app.status != VisaStatus.REJECTED, "Application already rejected");
+        if (app.status == VisaStatus.APPROVED) revert StudentVisaSystem__ApplicationAlreadyApproved();
+        if (app.status == VisaStatus.REJECTED) revert StudentVisaSystem__ApplicationAlreadyRejected();
     }
 
     function _updateDocument(Document storage doc, string calldata hash, uint256 expiryDate) internal {
-        require(expiryDate > block.timestamp, "Document already expired");
+        if (expiryDate <= block.timestamp) revert StudentVisaSystem__DocumentExpired();
+        
         doc.documentHash = hash;
         doc.status = VerificationStatus.SUBMITTED;
         doc.timestamp = block.timestamp;
@@ -516,8 +560,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function _validateDocumentVerification(Document storage doc) internal view {
-        require(doc.status == VerificationStatus.SUBMITTED, "Document not submitted or already verified");
-        require(doc.expiryDate > block.timestamp, "Document expired");
+        if (doc.status != VerificationStatus.SUBMITTED) revert StudentVisaSystem__DocumentNotSubmittedNotVerified();
+        if (doc.expiryDate <= block.timestamp) revert StudentVisaSystem__DocumentExpired();
     }
 
     function _updateVerificationState(Document storage doc, address verifier) internal {
@@ -600,28 +644,30 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     // Getters for application information
     function getApplicationStatus(address applicant) external view returns (VisaStatus) {
-        require(hasApplication[applicant], "Application does not exist");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
         return applications[applicant].status;
     }
 
     function getDocumentStatus(address applicant, DocumentType docType) external view returns (VerificationStatus) {
-        require(hasApplication[applicant], "Application does not exist");
-        require(
-            msg.sender == applicant || applications[applicant].authorizedViewers[msg.sender]
-                || hasRole(ADMIN_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender),
-            "Not authorized to view"
-        );
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
+
+        if (
+            msg.sender != applicant && 
+            !applications[applicant].authorizedViewers[msg.sender]
+        ) revert StudentVisaSystem__Unauthorized();
 
         return applications[applicant].documents[docType].status;
     }
 
     function getCredibilityScore(address applicant) external view returns (uint256) {
-        require(hasApplication[applicant], "Application does not exist");
-        require(
-            msg.sender == applicant || applications[applicant].authorizedViewers[msg.sender]
-                || hasRole(ADMIN_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender),
-            "Not authorized to view"
-        );
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
+        
+        if (
+            msg.sender != applicant && 
+            !applications[applicant].authorizedViewers[msg.sender] &&
+            !hasRole(ADMIN_ROLE, msg.sender) && 
+            !hasRole(EMBASSY_ROLE, msg.sender)
+        ) revert StudentVisaSystem__Unauthorized();
 
         return applications[applicant].credibilityScore;
     }
@@ -637,7 +683,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
             Timeline memory timeline
         )
     {
-        require(hasApplication[applicant], "No application");
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
         Application storage app = applications[applicant];
         return (app.status, app.credibilityScore, app.createdAt, app.updatedAt, app.timeline);
     }
