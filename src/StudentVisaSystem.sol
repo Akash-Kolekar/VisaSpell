@@ -128,9 +128,9 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     uint32 public expeditedProcessingTime = 10 days;
     uint32 public emergencyProcessingTime = 3 days;
 
-    uint256 public standardFee = 0.01 ether;
-    uint256 public expeditedFee = 0.03 ether;
-    uint256 public emergencyFee = 0.05 ether;
+    uint256 public standardFee = 0.000001 ether;
+    uint256 public expeditedFee = 0.000003 ether;
+    uint256 public emergencyFee = 0.000005 ether;
 
     uint256 public totalApplications;
     uint256 public totalApproved;
