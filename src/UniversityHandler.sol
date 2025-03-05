@@ -6,6 +6,9 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniversityHandler} from "./interface/IUniversityHandler.sol";
 
 contract UniversityHandler is AccessControl, IUniversityHandler {
+    error UniversityHandler__InvalidProgram();
+    error UniversityHandler__ApplicantNotFound();
+    
     bytes32 public constant UNIVERSITY_ROLE = keccak256("UNIVERSITY_ROLE");
 
     StudentVisaSystem private visaSystem;
@@ -51,9 +54,9 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
         string memory universityId = universityRegistry[msg.sender];
         bytes32 programHash = keccak256(abi.encodePacked(universityId, programId));
 
-        require(programs[programHash].isActive, "Invalid program");
+        if (!programs[programHash].isActive) revert UniversityHandler__InvalidProgram();
 
-        require(visaSystem.hasApplication(applicant), "Applicant not found");
+        if (!visaSystem.hasApplication(applicant)) revert UniversityHandler__ApplicantNotFound();
         visaSystem.submitDocument(
             applicant,
             StudentVisaSystem.DocumentType.ACCEPTANCE_LETTER,
