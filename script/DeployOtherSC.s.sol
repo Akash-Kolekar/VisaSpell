@@ -10,12 +10,12 @@ import {VerificationHub} from "../src/VerificationHub.sol";
 import {Script} from "forge-std/Script.sol";
 
 contract DeployOtherSC is Script {
-    // address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
-    address svs;
+    address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
+    // address svs;
 
-    constructor(address _svs) {
-        svs = _svs;
-    }
+    // constructor(address _svs) {
+    //     svs = _svs;
+    // }
 
     address treasury = 0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507;
 
