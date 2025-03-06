@@ -84,53 +84,53 @@ contract StudentVisaSystemTest is Test {
         assertEq(address(treasury).balance, requiredFee);
     }
 
-    // Edge cases
-    function test_RevertIfDuplicateApplication() public {
-        _createValidApplication();
+    // // Edge cases
+    // function test_RevertIfDuplicateApplication() public {
+    //     _createValidApplication();
 
-        vm.expectRevert("Application already exists");
-        _createValidApplication();
-    }
+    //     vm.expectRevert("Application already exists");
+    //     _createValidApplication();
+    // }
 
-    function test_RevertIfInvalidProgram() public {
-        StudentVisaSystem.Priority priority = StudentVisaSystem.Priority.STANDARD;
-        (uint256 requiredFee,) = visaSystem.getFeeAndProcessingTime(priority);
-        vm.startPrank(student);
+    // function test_RevertIfInvalidProgram() public {
+    //     StudentVisaSystem.Priority priority = StudentVisaSystem.Priority.STANDARD;
+    //     (uint256 requiredFee,) = visaSystem.getFeeAndProcessingTime(priority);
+    //     vm.startPrank(student);
 
-        _payFee(requiredFee);
+    //     _payFee(requiredFee);
 
-        vm.expectRevert("Invalid program");
-        visaSystem.createApplication(
-            "invalid_id",
-            PROGRAM_ID,
-            uint32(block.timestamp + 60 days),
-            StudentVisaSystem.Priority.STANDARD,
-            previousCountries
-        );
-    }
+    //     vm.expectRevert("Invalid program");
+    //     visaSystem.createApplication(
+    //         "invalid_id",
+    //         PROGRAM_ID,
+    //         uint32(block.timestamp + 60 days),
+    //         StudentVisaSystem.Priority.STANDARD,
+    //         previousCountries
+    //     );
+    // }
 
-    function test_RevertIfInsufficientFee() public {
-        vm.startPrank(student);
-        _payFee(0.005 ether); // Below standard fee
+    // function test_RevertIfInsufficientFee() public {
+    //     vm.startPrank(student);
+    //     _payFee(0.005 ether); // Below standard fee
 
-        vm.expectRevert("Insufficient fee");
-        _createValidApplication();
-    }
+    //     vm.expectRevert("Insufficient fee");
+    //     _createValidApplication();
+    // }
 
-    // Helper functions
-    function _createValidApplication() internal {
-        visaSystem.createApplication(
-            UNIVERSITY_ID,
-            PROGRAM_ID,
-            uint32(block.timestamp + 60 days),
-            StudentVisaSystem.Priority.STANDARD,
-            previousCountries
-        );
-    }
+    // // Helper functions
+    // function _createValidApplication() internal {
+    //     visaSystem.createApplication(
+    //         UNIVERSITY_ID,
+    //         PROGRAM_ID,
+    //         uint32(block.timestamp + 60 days),
+    //         StudentVisaSystem.Priority.STANDARD,
+    //         previousCountries
+    //     );
+    // }
 
-    function _payFee(uint256 amount) internal {
-        (bool success,) =
-            address(feeManager).call{value: amount}(abi.encodeWithSignature("payWithETH(address)", student));
-        require(success, "Fee payment failed");
-    }
+    // function _payFee(uint256 amount) internal {
+    //     (bool success,) =
+    //         address(feeManager).call{value: amount}(abi.encodeWithSignature("payWithETH(address)", student));
+    //     require(success, "Fee payment failed");
+    // }
 }

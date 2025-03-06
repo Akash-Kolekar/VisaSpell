@@ -11,6 +11,7 @@ import {VerificationHub} from "../src/VerificationHub.sol";
 import {DeploySVS} from "./DeploySVS.s.sol";
 
 contract DeploySVS is Script {
+    address admin = 0xB58634C4465D93A03801693FD6d76997C797e42A;
     address treasury = 0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507;
 
     function run()
@@ -18,7 +19,7 @@ contract DeploySVS is Script {
         returns (StudentVisaSystem, EmbassyGateway, FeeManager, TimelineEnhancer, UniversityHandler, VerificationHub)
     {
         // vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        vm.startBroadcast();
+        vm.startBroadcast(admin);
         StudentVisaSystem svs = new StudentVisaSystem();
 
         EmbassyGateway embassyGateway = new EmbassyGateway(address(svs));

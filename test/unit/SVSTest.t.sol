@@ -39,7 +39,7 @@ contract SVSTest is Test {
 
         (visaSystem, embassyGateway, feeManager, timelineEnhancer, universityHandler, verificationHub) = deployer.run();
 
-        vm.startPrank();
+        vm.startPrank(admin);
         universityHandler.grantRole(university, universityHandler.UNIVERSITY_ROLE());
 
         // Setup university
