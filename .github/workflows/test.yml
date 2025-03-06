@@ -37,6 +37,11 @@ jobs:
           forge build --sizes
         id: build
 
+      - name: Create Application
+        run: |
+          forge create-application --applicant 0xApplicantAddress
+        id: create_application
+
       - name: Run Forge tests
         run: |
           forge test -vvv
