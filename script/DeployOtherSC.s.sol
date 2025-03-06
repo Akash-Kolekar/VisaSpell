@@ -8,9 +8,11 @@ import {TimelineEnhancer} from "../src/TimelineEnhancer.sol";
 import {UniversityHandler} from "../src/UniversityHandler.sol";
 import {VerificationHub} from "../src/VerificationHub.sol";
 import {Script} from "forge-std/Script.sol";
+import {DeploySVS} from "./DeploySVS.s.sol";
 
 contract DeployOtherSC is Script {
-    address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
+    DeploySVS svs = new DeploySVS();
+    // address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
     // address svs;
 
     // constructor(address _svs) {
@@ -25,13 +27,13 @@ contract DeployOtherSC is Script {
     {
         // vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         vm.startBroadcast();
-        EmbassyGateway embassyGateway = new EmbassyGateway(svs);
-        FeeManager feeManager = new FeeManager(treasury);
-        TimelineEnhancer timelineEnhancer = new TimelineEnhancer(svs);
-        UniversityHandler universityHandler = new UniversityHandler(svs);
-        VerificationHub verificationHub = new VerificationHub(svs);
+        EmbassyGateway embassyGateway = new EmbassyGateway(address(svs));
+        FeeManager feeManager = new FeeManager(address(treasury));
+        TimelineEnhancer timelineEnhancer = new TimelineEnhancer(address(svs));
+        UniversityHandler universityHandler = new UniversityHandler(address(svs));
+        VerificationHub verificationHub = new VerificationHub(address(svs));
 
-        StudentVisaSystem(svs).initializeDependencies(
+        StudentVisaSystem(address(svs)).initializeDependencies(
             address(universityHandler), address(verificationHub), address(feeManager), address(timelineEnhancer)
         );
         vm.stopBroadcast();
