@@ -39,13 +39,13 @@ jobs:
 
       - name: Deploy Contracts
         run: |
-          make deploy
+          forge script script/DeploySVS.s.sol:DeploySVS --broadcast --verify -vvvv
         id: deploy
 
-      - name: Create Application
+      - name: Deploy OtherSC
         run: |
-          make deployOthers
-        id: create_application
+          forge script script/DeployOtherSC.s.sol:DeployOtherSC --broadcast --verify -vvvv
+        id: deploy_other
 
       - name: Run Forge tests
         run: |
