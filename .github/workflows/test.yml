@@ -42,11 +42,6 @@ jobs:
           forge script script/DeploySVS.s.sol:DeploySVS --broadcast --verify -vvvv
         id: deploy
 
-      - name: Deploy OtherSC
-        run: |
-          forge script script/DeployOtherSC.s.sol:DeployOtherSC --broadcast --verify -vvvv
-        id: deploy_other
-
       - name: Run Forge tests
         run: |
           forge test -vvv
