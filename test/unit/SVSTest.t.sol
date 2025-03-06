@@ -38,7 +38,8 @@ contract SVSTest is Test {
         deployer = new DeploySVS();
         visaSystem = deployer.run();
 
-        deployerOtherSC = new DeployOtherSC(address(visaSystem));
+        deployerOtherSC = new DeployOtherSC();
+        // deployerOtherSC = new DeployOtherSC(address(visaSystem));
         (embassyGateway, feeManager, timelineEnhancer, universityHandler, verificationHub) = deployerOtherSC.run();
 
         vm.startPrank(admin);
