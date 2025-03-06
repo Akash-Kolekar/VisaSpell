@@ -9,7 +9,6 @@ contract VerificationHub is AccessControl, IVerificationHub {
     error VerificationHub__RequestAlreadyProcessed();
     error VerificationHub__InvalidApplicant();
 
-
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
 
     StudentVisaSystem public visaSystem;
@@ -75,7 +74,7 @@ contract VerificationHub is AccessControl, IVerificationHub {
     /// @notice Process verification request (called by verifiers)
     function processVerification(bytes32 requestId, bool isValid) external onlyRole(VERIFIER_ROLE) {
         VerificationRequest storage request = verificationRequests[requestId];
-        if (request.completed) revert VerificationHub__RequestAlreadyProcessed(); 
+        if (request.completed) revert VerificationHub__RequestAlreadyProcessed();
         if (!visaSystem.hasApplication(request.applicant)) revert VerificationHub__InvalidApplicant();
 
         // Update verification records

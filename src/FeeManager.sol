@@ -5,6 +5,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFeeManager} from "./interface/IFeeManager.sol";
 
 contract FeeManager is IFeeManager {
+    error FeeManager__NoETHSent();
+    error FeeManager__PaymentFailed();
+
     struct Payment {
         uint256 ethPaid;
         uint256 tokenPaid;
@@ -27,9 +30,9 @@ contract FeeManager is IFeeManager {
     }
 
     function payWithETH(address applicant) external payable {
-        require(msg.value > 0, "No ETH sent");
+        if (msg.value == 0) revert FeeManager__NoETHSent();
         (bool sent,) = treasury.call{value: msg.value}("");
-        require(sent, "Payment failed");
+        if (!sent) revert FeeManager__PaymentFailed();
         totalPayments[applicant] += msg.value;
         emit PaidInETH(applicant, msg.value);
     }

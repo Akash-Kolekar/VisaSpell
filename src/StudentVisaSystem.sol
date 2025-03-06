@@ -240,10 +240,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         external
     {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        if (
-            applicant != msg.sender && 
-            hasRole(UNIVERSITY_ROLE, msg.sender)
-        ) revert StudentVisaSystem__Unauthorized();
+        if (applicant != msg.sender && hasRole(UNIVERSITY_ROLE, msg.sender)) revert StudentVisaSystem__Unauthorized();
 
         Application storage app = applications[applicant];
         _validateDocumentSubmission(app);
@@ -365,10 +362,9 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        if (
-            app.status != VisaStatus.UNDER_REVIEW &&
-            app.status != VisaStatus.CONDITIONALLY_APPROVED
-        ) revert StudentVisaSystem__ApplicationNotUnderApproval();
+        if (app.status != VisaStatus.UNDER_REVIEW && app.status != VisaStatus.CONDITIONALLY_APPROVED) {
+            revert StudentVisaSystem__ApplicationNotUnderApproval();
+        }
 
         app.status = VisaStatus.APPROVED;
         app.updatedAt = block.timestamp;
@@ -382,10 +378,9 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        if (
-            app.status == VisaStatus.APPROVED || 
-            app.status != VisaStatus.REJECTED
-        ) revert StudentVisaSystem__ApplicationAlreadyProcessed();
+        if (app.status == VisaStatus.APPROVED || app.status != VisaStatus.REJECTED) {
+            revert StudentVisaSystem__ApplicationAlreadyProcessed();
+        }
 
         app.status = VisaStatus.REJECTED;
         app.updatedAt = block.timestamp;
@@ -401,7 +396,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // Administrative functions
     function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
-    }   
+    }
 
     function unpause() external onlyRole(ADMIN_ROLE) {
         _unpause();
@@ -410,8 +405,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // Allow withdrawal of fees by admin
     function withdrawFees(address payable recipient, uint256 amount) external onlyRole(ADMIN_ROLE) nonReentrant {
         // @audit: is the checks really necessary? since solidity will revert underflow value
-        require(amount <= address(this).balance, "Insufficient balance"); 
-        (bool sent, ) = recipient.call{value: amount}("");
+        require(amount <= address(this).balance, "Insufficient balance");
+        (bool sent,) = recipient.call{value: amount}("");
         if (!sent) revert StudentVisaSystem__WithdrawalFailed();
         // recipient.transfer(amount);
     }
@@ -425,17 +420,14 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function updateApplicationStatus(address applicant, VisaStatus newStatus) external onlyRole(EMBASSY_ROLE) {
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
         if (
-            !hasApplication[applicant]
-        ) revert StudentVisaSystem__ApplicationNotFound();
-        if (
-            applications[applicant].status == VisaStatus.APPROVED || 
-            applications[applicant].status == VisaStatus.REJECTED
+            applications[applicant].status == VisaStatus.APPROVED
+                || applications[applicant].status == VisaStatus.REJECTED
         ) revert StudentVisaSystem__CannotModifyFinalizedApplication();
-        if (
-            newStatus != VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED && 
-            newStatus != VisaStatus.UNDER_REVIEW
-        ) revert StudentVisaSystem__InvalidStatusUpdate();
+        if (newStatus != VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED && newStatus != VisaStatus.UNDER_REVIEW) {
+            revert StudentVisaSystem__InvalidStatusUpdate();
+        }
 
         applications[applicant].status = newStatus;
         applications[applicant].updatedAt = block.timestamp;
@@ -444,10 +436,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function resetApplication() external {
-        if (
-            applications[msg.sender].status != VisaStatus.REJECTED
-        ) revert StudentVisaSystem__ApplicationNotRejected();
-        
+        if (applications[msg.sender].status != VisaStatus.REJECTED) revert StudentVisaSystem__ApplicationNotRejected();
+
         delete applications[msg.sender];
         hasApplication[msg.sender] = false;
     }
@@ -507,7 +497,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     function _updateDocument(Document storage doc, string calldata hash, uint256 expiryDate) internal {
         if (expiryDate <= block.timestamp) revert StudentVisaSystem__DocumentExpired();
-        
+
         doc.documentHash = hash;
         doc.status = VerificationStatus.SUBMITTED;
         doc.timestamp = block.timestamp;
@@ -651,22 +641,19 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     function getDocumentStatus(address applicant, DocumentType docType) external view returns (VerificationStatus) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
-        if (
-            msg.sender != applicant && 
-            !applications[applicant].authorizedViewers[msg.sender]
-        ) revert StudentVisaSystem__Unauthorized();
+        if (msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]) {
+            revert StudentVisaSystem__Unauthorized();
+        }
 
         return applications[applicant].documents[docType].status;
     }
 
     function getCredibilityScore(address applicant) external view returns (uint256) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        
+
         if (
-            msg.sender != applicant && 
-            !applications[applicant].authorizedViewers[msg.sender] &&
-            !hasRole(ADMIN_ROLE, msg.sender) && 
-            !hasRole(EMBASSY_ROLE, msg.sender)
+            msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]
+                && !hasRole(ADMIN_ROLE, msg.sender) && !hasRole(EMBASSY_ROLE, msg.sender)
         ) revert StudentVisaSystem__Unauthorized();
 
         return applications[applicant].credibilityScore;

@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import {StudentVisaSystem} from "./StudentVisaSystem.sol";
 
 contract TimelineEnhancer {
+    error TimelineEnhancer__VisaSystemNotConfigured();
+
     StudentVisaSystem private visaSystem;
 
     struct Prediction {
@@ -19,7 +21,7 @@ contract TimelineEnhancer {
     }
 
     function generatePrediction(address applicant) external returns (Prediction memory) {
-        require(address(visaSystem) != address(0), "Visa system not configured");
+        if (address(visaSystem) == address(0)) revert TimelineEnhancer__VisaSystemNotConfigured();
 
         (StudentVisaSystem.VisaStatus status, uint256 credibility, uint256 created) =
             visaSystem.getApplicationCore(applicant);

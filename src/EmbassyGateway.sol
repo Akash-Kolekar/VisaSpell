@@ -7,7 +7,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract EmbassyGateway is IEmbassyGateway, AccessControl {
     error EmbassyGateway__Unauthorized();
-    
+
     StudentVisaSystem private visaSystem;
 
     bytes32 public constant EMBASSY_ROLE = keccak256("EMBASSY_ROLE");
@@ -20,24 +20,14 @@ contract EmbassyGateway is IEmbassyGateway, AccessControl {
     }
 
     function requestAdditionalDocuments(address applicant, string calldata docs) external override {
-        if (
-            !visaSystem.hasRole(
-                visaSystem.EMBASSY_ROLE(),
-                msg.sender
-            )
-        ) revert EmbassyGateway__Unauthorized();
+        if (!visaSystem.hasRole(visaSystem.EMBASSY_ROLE(), msg.sender)) revert EmbassyGateway__Unauthorized();
 
         documentRequests[applicant].push(docs); // Store requested docs
         visaSystem.updateApplicationStatus(applicant, StudentVisaSystem.VisaStatus.ADDITIONAL_DOCUMENTS_REQUIRED);
     }
 
     function overrideDecision(address applicant, bool approve, string calldata reason) external override {
-        if (
-            !visaSystem.hasRole(
-                visaSystem.EMBASSY_ROLE(),
-                msg.sender
-            )
-        ) revert EmbassyGateway__Unauthorized();
+        if (!visaSystem.hasRole(visaSystem.EMBASSY_ROLE(), msg.sender)) revert EmbassyGateway__Unauthorized();
 
         if (approve) {
             visaSystem.approveVisa(applicant);
