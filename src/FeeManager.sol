@@ -41,4 +41,10 @@ contract FeeManager is IFeeManager {
     //     payments[applicant].tokenAddress = token;
     //     emit PaidInToken(applicant, token, amount);
     // }
+
+    // Fallback function must be declared as external.
+    fallback() external payable {}
+
+    // Receive is a variant of fallback that is triggered when msg.data is empty
+    receive() external payable {}
 }

@@ -8,8 +8,9 @@ import {IUniversityHandler} from "./interface/IUniversityHandler.sol";
 contract UniversityHandler is AccessControl, IUniversityHandler {
     error UniversityHandler__InvalidProgram();
     error UniversityHandler__ApplicantNotFound();
-    
+
     bytes32 public constant UNIVERSITY_ROLE = keccak256("UNIVERSITY_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     StudentVisaSystem private visaSystem;
 
@@ -27,6 +28,8 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
 
     constructor(address _visaSystem) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        _grantRole(UNIVERSITY_ROLE, msg.sender);
         visaSystem = StudentVisaSystem(_visaSystem);
     }
 
@@ -68,5 +71,9 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
     function isValidProgram(string calldata universityId, string calldata programId) external view returns (bool) {
         bytes32 hash = keccak256(abi.encodePacked(universityId, programId));
         return programs[hash].isActive;
+    }
+
+    function grantRole(address account, bytes32 role) external onlyRole(ADMIN_ROLE) {
+        _grantRole(role, account);
     }
 }

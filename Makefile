@@ -47,4 +47,6 @@ endif
 
 deploy:
 	@forge script script/DeploySVS.s.sol:DeploySVS $(NETWORK_ARGS)
+deployOthers:
+	@forge script script/DeployOtherSC.s.sol:DeployOtherSC $(NETWORK_ARGS)
 

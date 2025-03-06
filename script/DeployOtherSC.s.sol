@@ -9,8 +9,14 @@ import {UniversityHandler} from "../src/UniversityHandler.sol";
 import {VerificationHub} from "../src/VerificationHub.sol";
 import {Script} from "forge-std/Script.sol";
 
-contract DeployOtherSc is Script {
-    address svs = 0xB92fBb1c1006DFe7842Ac72e4B53A8Fe4e7E962c;
+contract DeployOtherSC is Script {
+    // address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
+    address svs;
+
+    constructor(address _svs) {
+        svs = _svs;
+    }
+
     address treasury = 0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507;
 
     function run()
@@ -23,6 +29,10 @@ contract DeployOtherSc is Script {
         TimelineEnhancer timelineEnhancer = new TimelineEnhancer(svs);
         UniversityHandler universityHandler = new UniversityHandler(svs);
         VerificationHub verificationHub = new VerificationHub(svs);
+
+        StudentVisaSystem(svs).initializeDependencies(
+            address(universityHandler), address(verificationHub), address(feeManager), address(timelineEnhancer)
+        );
         vm.stopBroadcast();
 
         return (embassyGateway, feeManager, timelineEnhancer, universityHandler, verificationHub);
