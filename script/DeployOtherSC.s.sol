@@ -23,7 +23,8 @@ contract DeployOtherSC is Script {
         external
         returns (EmbassyGateway, FeeManager, TimelineEnhancer, UniversityHandler, VerificationHub)
     {
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        // vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        vm.startBroadcast();
         EmbassyGateway embassyGateway = new EmbassyGateway(svs);
         FeeManager feeManager = new FeeManager(treasury);
         TimelineEnhancer timelineEnhancer = new TimelineEnhancer(svs);
