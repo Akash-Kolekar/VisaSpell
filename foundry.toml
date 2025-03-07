@@ -3,6 +3,10 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+# To deploy on the Vanguard testnet, use the following configuration
+# solc_version = "0.8.20"
+# evm_version = "paris"   # Use pre-Shanghai EVM version
+
 via_ir = true
 optimizer = true
 optimizer_runs = 10000

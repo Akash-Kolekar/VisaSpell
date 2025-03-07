@@ -46,7 +46,7 @@ ifeq ($(findstring --network scroll-sepolia,$(ARGS)),--network scroll-sepolia)
 endif
 
 ifeq ($(findstring --network vanguard-vanar,$(ARGS)),--network vanguard-vanar)
-	NETWORK_ARGS := --rpc-url $(VANGUARD_RPC_URL) --private-key $(PRIVATE_KEY) --slow --optimize true --optimizer-runs 10000 --broadcast --legacy -vvvv
+	NETWORK_ARGS := --rpc-url $(VANGUARD_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --legacy --verify -vvvv
 endif
 
 deploy:
