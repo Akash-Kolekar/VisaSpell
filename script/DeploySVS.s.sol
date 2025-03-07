@@ -32,6 +32,11 @@ contract DeploySVS is Script {
             address(universityHandler), address(verificationHub), address(feeManager), address(timelineEnhancer)
         );
 
+        // Intialize dependencies for smooth communication between VerificationHub and StudentVisaSystem
+        verificationHub.grantRole(address(verificationHub), verificationHub.DEFAULT_ADMIN_ROLE());
+        svs.grantRole(address(verificationHub), svs.VERIFICATION_HUB_ROLE());
+        verificationHub.grantRole(address(svs), svs.VERIFICATION_HUB_ROLE());
+
         vm.stopBroadcast();
         return (svs, embassyGateway, feeManager, timelineEnhancer, universityHandler, verificationHub);
     }

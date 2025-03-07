@@ -11,15 +11,14 @@ import {Script} from "forge-std/Script.sol";
 import {DeploySVS} from "./DeploySVS.s.sol";
 
 contract DeployOtherSC is Script {
-    DeploySVS svs = new DeploySVS();
-    // address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
+    address admin = 0xB58634C4465D93A03801693FD6d76997C797e42A;
+    address svs = 0x1221d1F70EE5Df5C0c2b9Efac309156aB541f300;
+    address treasury = 0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507;
     // address svs;
 
     // constructor(address _svs) {
     //     svs = _svs;
     // }
-
-    address treasury = 0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507;
 
     function run()
         external

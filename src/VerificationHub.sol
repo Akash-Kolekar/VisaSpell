@@ -10,6 +10,7 @@ contract VerificationHub is AccessControl, IVerificationHub {
     error VerificationHub__InvalidApplicant();
 
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
+    bytes32 public constant VERIFICATION_HUB_ROLE = keccak256("VERIFICATION_HUB_ROLE");
 
     StudentVisaSystem public visaSystem;
 
@@ -52,7 +53,7 @@ contract VerificationHub is AccessControl, IVerificationHub {
     /// @notice Initial role setup must be called after deployment
     function initializeRoles() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Grant verification hub role to itself in visa system
-        visaSystem.grantRole(visaSystem.VERIFICATION_HUB_ROLE(), address(this));
+        visaSystem.grantRole(address(this), visaSystem.VERIFICATION_HUB_ROLE());
     }
 
     /// @notice Create a new verification request
@@ -157,5 +158,9 @@ contract VerificationHub is AccessControl, IVerificationHub {
     function _performVerification(VerificationType, string calldata) internal pure returns (bool) {
         // Always return true in mock implementation
         return true;
+    }
+
+    function grantRole(address account, bytes32 role) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(role, account);
     }
 }

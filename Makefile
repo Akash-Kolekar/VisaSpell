@@ -41,12 +41,17 @@ ifeq ($(findstring --network sepolia,$(ARGS)),--network sepolia)
 	NETWORK_ARGS := --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 endif
 
-ifeq ($(findstring --network scroll,$(ARGS)),--network scroll)
+ifeq ($(findstring --network scroll-sepolia,$(ARGS)),--network scroll-sepolia)
 	NETWORK_ARGS := --rpc-url $(SCROLL_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(SCROLLSCAN_API_KEY) -vvvv
+endif
+
+ifeq ($(findstring --network vanguard-vanar,$(ARGS)),--network vanguard-vanar)
+	NETWORK_ARGS := --rpc-url $(VANGUARD_RPC_URL) --private-key $(PRIVATE_KEY) --slow --optimize true --optimizer-runs 10000 --broadcast --legacy -vvvv
 endif
 
 deploy:
 	@forge script script/DeploySVS.s.sol:DeploySVS $(NETWORK_ARGS)
+
 deployOthers:
 	@forge script script/DeployOtherSC.s.sol:DeployOtherSC $(NETWORK_ARGS)
 

@@ -631,7 +631,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         return a < b ? a : b;
     }
 
-    function grantRole(address account, bytes32 role) external onlyRole(ADMIN_ROLE) {
+    function grantRole(address account, bytes32 role) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(role, account);
     }
 
