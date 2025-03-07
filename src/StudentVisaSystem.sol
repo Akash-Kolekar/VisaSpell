@@ -20,6 +20,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     error StudentVisaSystem__EnrollmentDateTooFar();
     error StudentVisaSystem__InvalidProgram();
     error StudentVisaSystem__InsufficientFeePaid();
+    error StudentVisaSystem__FeePaymentFailed();
 
     error StudentVisaSystem__ApplicationNotFound();
     error StudentVisaSystem__Unauthorized();
@@ -205,7 +206,13 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
         // Process any ETH sent with the transaction
         if (msg.value > 0) {
-            feeManager.payWithETH{value: msg.value}(msg.sender);
+            // feeManager.payWithETH{value: msg.value}(msg.sender); //causing error?
+
+            (bool success,) =
+                address(feeManager).call{value: requiredFee}(abi.encodeWithSignature("payWithETH(address)", msg.sender));
+            if (!success) {
+                revert StudentVisaSystem__FeePaymentFailed();
+            }
         }
 
         // Verify total payments meet requirement
