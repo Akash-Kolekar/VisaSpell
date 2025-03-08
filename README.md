@@ -47,8 +47,18 @@ All contracts are verified on Vanguard Vanar Testnet:
 - **UniversityHandler**: [`0x44e7f3652100B93db0c8749d173fB3F71Aad9907`](https://sepolia.scrollscan.com/address/0xEC049424385BC993DdBFc0B66B589C7007f4b383#code)
 - **EmbassyGateway**: [`0xE927A3cE99bBc0204B10Dd81F99e13354a70016D`](https://sepolia.scrollscan.com/address/0x444FC16EA2d53f46d68FB833eB62e1E24539f2d6#code)
 
-## Note - Because of multiple contracts and dependencies vanguard is not supporting to verify the contracts. I've tried multiple ways like from foundry to sourcify, manual, with flattened file with correct inputs still not verified.
+## Note 
+> ⚠️ Because of multiple contracts and dependencies vanguard is not supporting to verify the contracts. I've tried multiple ways like from foundry to sourcify, manual, with flattened file with correct inputs still not verified.
   
+### Smart Contracts Flow-Diagram
+<img src="image-2.png" width="800" alt="Smart Contract Architecture showing the interaction between different components">
+
+### Traditional vs Blockchain Approach
+<img src="image.png" width="800" alt="Comparison between Traditional and Blockchain-based Visa Processing">
+
+### System Comparisons
+<img src="image-1.png" width="800" alt="Feature comparison matrix between different visa processing systems">
+
 ## Installation
 
 1. Clone the repository:
@@ -56,6 +66,83 @@ All contracts are verified on Vanguard Vanar Testnet:
 git clone https://github.com/Akash-Kolekar/VisaSpell.git
 cd student-visa-system
 ```
+
+
+2. Install Foundry:
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+3. Install dependencies:
+```bash
+forge install
+```
+
+## Configuration
+
+1. Set up environment variables:
+```bash
+cp .env.example .env
+```
+
+2. Update `.env` with your values:
+```
+PRIVATE_KEY=your_private_key
+SCROLL_SEPOLIA_RPC_URL=your_scroll_rpc_url
+VANGUARD_RPC_URL=your_vanguard_rpc_url
+ETHERSCAN_API_KEY=your_api_key
+```
+
+## Testing
+
+Run the test suite:
+```bash
+forge test
+```
+
+Run with verbosity:
+```bash
+forge test -vvv
+```
+
+## Deployment
+
+Deploy to Scroll Sepolia:
+```bash
+forge script script/Deploy.s.sol:Deploy --rpc-url $SCROLL_SEPOLIA_RPC_URL --broadcast --verify
+```
+
+Deploy to Vanguard:
+```bash
+forge script script/Deploy.s.sol:Deploy --rpc-url $VANGUARD_RPC_URL --broadcast
+```
+
+## Usage
+
+1. **For Students**:
+   - Submit visa applications
+   - Upload required documents
+   - Track application status
+   - Pay processing fees
+
+2. **For Universities**:
+   - Verify student enrollment
+   - Issue acceptance letters
+   - Manage student records
+
+3. **For Embassies**:
+   - Process visa applications
+   - Verify submitted documents
+   - Update application status
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 
 
