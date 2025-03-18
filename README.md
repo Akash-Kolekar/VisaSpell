@@ -51,13 +51,13 @@ All contracts are verified on Vanguard Vanar Testnet:
 > ⚠️ Because of multiple contracts and dependencies vanguard is not supporting to verify the contracts. I've tried multiple ways like from foundry to sourcify, manual, with flattened file with correct inputs still not verified.
   
 ### Smart Contracts Flow-Diagram
-<img src="image-2.png" width="800" alt="Smart Contract Architecture showing the interaction between different components">
+<img src="flow-diagrams/WholeWorkFlowDiagram.excalidraw.png" width="800" alt="Smart Contract Architecture showing the interaction between different components">
 
 ### Traditional vs Blockchain Approach
-<img src="image.png" width="800" alt="Comparison between Traditional and Blockchain-based Visa Processing">
+<img src="flow-diagrams/TraditonalVsBlockchain.png" width="800" alt="Comparison between Traditional and Blockchain-based Visa Processing">
 
 ### System Comparisons
-<img src="image-1.png" width="800" alt="Feature comparison matrix between different visa processing systems">
+<img src="flow-diagrams/difference.png" width="800" alt="Feature comparison matrix between different visa processing systems">
 
 ## Installation
 
