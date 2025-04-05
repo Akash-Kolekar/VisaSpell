@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 interface IVerificationHub {
+    // Define the VerificationResult struct in the interface
     struct VerificationResult {
         address verifier;
         uint256 timestamp;
@@ -9,7 +10,16 @@ interface IVerificationHub {
         string proof;
     }
 
-    function registerVerifier(address verifier, string calldata credentials) external;
+    enum VerificationType {
+        DOCUMENT,
+        BIOMETRIC,
+        BACKGROUND_CHECK
+    }
+
+    // Function declarations must match implementations exactly
     function getVerificationHistory(address applicant) external view returns (VerificationResult[] memory);
-    function calculateTrustScore(address verifier) external view returns (uint256);
+
+    function requestVerification(address applicant, uint8 vType, string calldata proof) external;
+
+    function processVerification(bytes32 requestId, bool isValid) external;
 }

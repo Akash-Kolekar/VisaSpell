@@ -2,8 +2,9 @@
 pragma solidity ^0.8.20;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {StudentVisaSystem} from "./StudentVisaSystem.sol";
+import {IStudentVisaSystem} from "./interface/IStudentVisaSystem.sol";
 import {IVerificationHub} from "./interface/IVerificationHub.sol";
+import {SharedTypes} from "./interface/SharedTypes.sol";
 
 contract VerificationHub is AccessControl, IVerificationHub {
     error VerificationHub__RequestAlreadyProcessed();
@@ -11,15 +12,11 @@ contract VerificationHub is AccessControl, IVerificationHub {
 
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
     bytes32 public constant VERIFICATION_HUB_ROLE = keccak256("VERIFICATION_HUB_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    StudentVisaSystem public visaSystem;
+    IStudentVisaSystem public visaSystem;
 
-    enum VerificationType {
-        DOCUMENT,
-        BIOMETRIC,
-        BACKGROUND_CHECK
-    }
-
+    // Using the VerificationType from interface for consistency
     struct VerificationRequest {
         address applicant;
         VerificationType vType;
@@ -35,6 +32,9 @@ contract VerificationHub is AccessControl, IVerificationHub {
         uint256 lastActivity;
     }
 
+    // Reuse VerificationResult from interface instead of redefining
+    // using IVerificationHub.VerificationResult;
+
     // Mappings
     mapping(bytes32 => VerificationRequest) public verificationRequests;
     mapping(address => VerifierProfile) public verifiers;
@@ -44,36 +44,50 @@ contract VerificationHub is AccessControl, IVerificationHub {
     event VerificationRequested(bytes32 requestId, address applicant, VerificationType vType);
     event VerificationCompleted(bytes32 requestId, bool result);
     event VerifierRegistered(address verifier);
+    event VisaSystemUpdated(address oldSystem, address newSystem);
 
     constructor(address _visaSystem) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        visaSystem = StudentVisaSystem(_visaSystem);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        visaSystem = IStudentVisaSystem(_visaSystem);
+    }
+
+    /// @notice Update the visa system address
+    function setVisaSystem(address _visaSystem) external onlyRole(ADMIN_ROLE) {
+        address oldSystem = address(visaSystem);
+        visaSystem = IStudentVisaSystem(_visaSystem);
+        emit VisaSystemUpdated(oldSystem, _visaSystem);
     }
 
     /// @notice Initial role setup must be called after deployment
-    function initializeRoles() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Grant verification hub role to itself in visa system
-        visaSystem.grantRole(address(this), visaSystem.VERIFICATION_HUB_ROLE());
+    function initializeRoles() external onlyRole(ADMIN_ROLE) {
+        // We can't automatically request roles from StudentVisaSystem
+        // The StudentVisaSystem admin must grant this contract the VERIFICATION_HUB_ROLE
+        // This function can be used for any local role initialization
+        _grantRole(VERIFICATION_HUB_ROLE, address(this));
     }
 
     /// @notice Create a new verification request
-    function requestVerification(address applicant, VerificationType vType, string calldata proof)
-        external
-        onlyRole(visaSystem.VERIFICATION_HUB_ROLE())
-    {
+    /// @dev Changed role check to use local role for now to avoid circular dependency
+    function requestVerification(address applicant, uint8 vType, string calldata proof) external override {
+        // Allow StudentVisaSystem contract or anyone with VERIFICATION_HUB_ROLE to call this
+        if (msg.sender != address(visaSystem) && !hasRole(VERIFICATION_HUB_ROLE, msg.sender)) {
+            revert("VerificationHub: Unauthorized");
+        }
+
         bytes32 requestId = keccak256(abi.encodePacked(applicant, vType, proof, block.timestamp));
         verificationRequests[requestId] = VerificationRequest({
             applicant: applicant,
-            vType: vType,
+            vType: VerificationType(vType), // Convert uint8 to enum type here
             proof: proof,
             completed: false,
             verifier: address(0)
         });
-        emit VerificationRequested(requestId, applicant, vType);
+        emit VerificationRequested(requestId, applicant, VerificationType(vType));
     }
 
     /// @notice Process verification request (called by verifiers)
-    function processVerification(bytes32 requestId, bool isValid) external onlyRole(VERIFIER_ROLE) {
+    function processVerification(bytes32 requestId, bool isValid) external override onlyRole(VERIFIER_ROLE) {
         VerificationRequest storage request = verificationRequests[requestId];
         if (request.completed) revert VerificationHub__RequestAlreadyProcessed();
         if (!visaSystem.hasApplication(request.applicant)) revert VerificationHub__InvalidApplicant();
@@ -117,7 +131,7 @@ contract VerificationHub is AccessControl, IVerificationHub {
     }
 
     /// @notice Get verification history for an applicant
-    function getVerificationHistory(address applicant) external view returns (VerificationResult[] memory) {
+    function getVerificationHistory(address applicant) external view override returns (VerificationResult[] memory) {
         VerificationResult[] memory allResults = new VerificationResult[](0);
 
         for (uint8 vType = 0; vType < uint8(type(VerificationType).max); vType++) {

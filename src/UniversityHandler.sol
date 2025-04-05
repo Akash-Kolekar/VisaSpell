@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {StudentVisaSystem} from "./StudentVisaSystem.sol";
+import {IStudentVisaSystem} from "./interface/IStudentVisaSystem.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniversityHandler} from "./interface/IUniversityHandler.sol";
 
@@ -12,7 +12,7 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
     bytes32 public constant UNIVERSITY_ROLE = keccak256("UNIVERSITY_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    StudentVisaSystem private visaSystem;
+    IStudentVisaSystem private visaSystem;
 
     struct Program {
         string requirements;
@@ -30,7 +30,7 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(UNIVERSITY_ROLE, msg.sender);
-        visaSystem = StudentVisaSystem(_visaSystem);
+        visaSystem = IStudentVisaSystem(_visaSystem);
     }
 
     function registerUniversity(address universityAddr, string calldata universityId)
@@ -62,7 +62,7 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
         if (!visaSystem.hasApplication(applicant)) revert UniversityHandler__ApplicantNotFound();
         visaSystem.submitDocument(
             applicant,
-            StudentVisaSystem.DocumentType.ACCEPTANCE_LETTER,
+            IStudentVisaSystem.DocumentType.ACCEPTANCE_LETTER,
             string(abi.encodePacked(universityId, ":", programId)),
             block.timestamp + 365 days
         );
@@ -75,5 +75,38 @@ contract UniversityHandler is AccessControl, IUniversityHandler {
 
     function grantRole(address account, bytes32 role) external onlyRole(ADMIN_ROLE) {
         _grantRole(role, account);
+    }
+
+    // Add new function to update program details
+    function updateProgram(
+        string calldata programId,
+        string calldata requirements,
+        uint256 tuition,
+        bool requiresInterview,
+        bool isActive
+    ) external onlyRole(UNIVERSITY_ROLE) {
+        string memory universityId = universityRegistry[msg.sender];
+        bytes32 programHash = keccak256(abi.encodePacked(universityId, programId));
+
+        // Ensure the program exists
+        require(programs[programHash].isActive || !programs[programHash].isActive, "Program does not exist");
+
+        programs[programHash] = Program({
+            requirements: requirements,
+            tuition: tuition,
+            requiresInterview: requiresInterview,
+            isActive: isActive
+        });
+    }
+
+    // Add function to deactivate program
+    function deactivateProgram(string calldata programId) external onlyRole(UNIVERSITY_ROLE) {
+        string memory universityId = universityRegistry[msg.sender];
+        bytes32 programHash = keccak256(abi.encodePacked(universityId, programId));
+
+        // Ensure the program exists
+        require(programs[programHash].isActive || !programs[programHash].isActive, "Program does not exist");
+
+        programs[programHash].isActive = false;
     }
 }

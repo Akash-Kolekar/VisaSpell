@@ -61,6 +61,10 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant VERIFICATION_HUB_ROLE = keccak256("VERIFICATION_HUB_ROLE");
 
+    uint8 public constant VERIFICATION_TYPE_DOCUMENT = 0;
+    uint8 public constant VERIFICATION_TYPE_BIOMETRIC = 1;
+    uint8 public constant VERIFICATION_TYPE_BACKGROUND_CHECK = 2;
+
     enum DocumentType {
         PASSPORT,
         ACADEMIC_RECORDS,
@@ -247,7 +251,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         external
     {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        if (applicant != msg.sender && hasRole(UNIVERSITY_ROLE, msg.sender)) revert StudentVisaSystem__Unauthorized();
+        // FIXED: Changed from hasRole to !hasRole - the condition was inverted
+        if (applicant != msg.sender && !hasRole(UNIVERSITY_ROLE, msg.sender)) revert StudentVisaSystem__Unauthorized();
 
         Application storage app = applications[applicant];
         _validateDocumentSubmission(app);
@@ -257,9 +262,11 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
         emit DocumentSubmitted(applicant, docType, documentHash);
 
-        _checkTimelineCritical(msg.sender);
+        // FIXED: Pass applicant instead of msg.sender
+        _checkTimelineCritical(applicant);
 
-        verificationHub.requestVerification(applicant, VerificationHub.VerificationType.DOCUMENT, documentHash);
+        // Cast the uint8 constant to the expected enum type
+        verificationHub.requestVerification(applicant, VERIFICATION_TYPE_DOCUMENT, documentHash);
     }
 
     // Feature 3: Biometric verification
@@ -283,7 +290,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         external
         onlyRole(EMBASSY_ROLE)
     {
-        if (!hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationNotFound();
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound(); // Changed from msg.sender to applicant
 
         Application storage app = applications[applicant];
         if (app.status != VisaStatus.UNDER_REVIEW) revert StudentVisaSystem__ApplicationNotUnderReview();
@@ -385,7 +392,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
         Application storage app = applications[applicant];
-        if (app.status == VisaStatus.APPROVED || app.status != VisaStatus.REJECTED) {
+        if (app.status == VisaStatus.APPROVED || app.status == VisaStatus.REJECTED) {
+            // Changed != to ==
             revert StudentVisaSystem__ApplicationAlreadyProcessed();
         }
 
@@ -605,6 +613,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     function _checkTimelineCritical(address applicant) internal {
         if (address(timelineEnhancer) != address(0)) {
+            // FIXED: Using applicant parameter instead of msg.sender
             TimelineEnhancer.Prediction memory prediction = timelineEnhancer.generatePrediction(applicant);
 
             applicantPredictions[applicant].push(prediction);
@@ -616,6 +625,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
             }
         }
 
+        // Rest of function remains the same
         Application storage app = applications[applicant];
 
         uint256 daysUntilDeadline = (app.timeline.deadlineDate - block.timestamp) / 1 days;
@@ -687,6 +697,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         view
         returns (VisaStatus status, uint256 credibilityScore, uint256 createdAt)
     {
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound(); // Added this check
         Application storage app = applications[applicant];
         return (app.status, app.credibilityScore, app.createdAt);
     }
