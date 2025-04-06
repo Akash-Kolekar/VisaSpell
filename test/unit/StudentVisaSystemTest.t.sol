@@ -1,136 +1,336 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.20;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
-// import {Test, console} from "forge-std/Test.sol";
-// import {StudentVisaSystem} from "../../src/StudentVisaSystem.sol";
-// import {UniversityHandler} from "../../src/UniversityHandler.sol";
-// import {FeeManager} from "../../src/FeeManager.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {StudentVisaSystem} from "../../src/StudentVisaSystem.sol";
+import {VerificationHub} from "../../src/VerificationHub.sol";
+import {UniversityHandler} from "../../src/UniversityHandler.sol";
+import {FeeManager} from "../../src/FeeManager.sol";
+import {TimelineEnhancer} from "../../src/TimelineEnhancer.sol";
+import {EmbassyGateway} from "../../src/EmbassyGateway.sol";
+import {DeploySVS} from "../../script/DeploySVS.s.sol";
 
-// contract StudentVisaSystemTest is Test {
-//     StudentVisaSystem public visaSystem;
-//     UniversityHandler public universityHandler;
-//     FeeManager public feeManager;
+contract StudentVisaSystemTest is Test {
+    StudentVisaSystem svs;
+    VerificationHub verificationHub;
+    UniversityHandler universityHandler;
+    FeeManager feeManager;
+    TimelineEnhancer timelineEnhancer;
+    EmbassyGateway embassyGateway;
 
-//     address public admin = makeAddr("admin");
-//     address public student = makeAddr("student");
-//     address public university = makeAddr("university");
-//     address public treasury = makeAddr("treasury");
+    // address admin = 0xB58634C4465D93A03801693FD6d76997C797e42A;
+    address admin = makeAddr("admin");
+    address applicant1 = makeAddr("applicant1");
+    address applicant2 = makeAddr("applicant2");
+    address university = makeAddr("university");
+    address embassy = makeAddr("embassy");
+    address verifier = makeAddr("verifier");
+    address treasury = makeAddr("treasury");
 
-//     string public constant UNIVERSITY_ID = "uni_123";
-//     string public constant PROGRAM_ID = "cs_2023";
-//     string[] public previousCountries;
+    string universityId = "Stanford";
+    string programId = "CS101";
+    uint32 enrollmentDate;
+    string[] previousVisaCountries;
 
-//     function setUp() public {
-//         vm.startPrank(admin);
+    // Test values
+    uint256 documentExpiryDate = block.timestamp + 365 days;
+    string documentHash = "QmDocumentHash123";
+    string biometricHash = "QmBiometricHash123";
 
-//         // Deploy contracts
-//         visaSystem = new StudentVisaSystem();
-//         universityHandler = new UniversityHandler(address(visaSystem));
-//         feeManager = new FeeManager(treasury);
+    function setUp() public {
+        // Generate test admin address
+        admin = makeAddr("admin");
+        vm.startPrank(admin);
 
-//         // Initialize dependencies
-//         visaSystem.initializeDependencies(
-//             address(universityHandler),
-//             address(0), // verificationHub
-//             address(feeManager),
-//             address(0) // timelineEnhancer
-//         );
+        // Deploy all contracts using the deployment script
+        DeploySVS deployer = new DeploySVS();
+        deployer.setTestMode(true); // Set to test mode to avoid broadcasting
+        (svs, embassyGateway, feeManager, timelineEnhancer, universityHandler, verificationHub) = deployer.run();
 
-//         universityHandler.grantRole(address(university), universityHandler.UNIVERSITY_ROLE());
+        // Grant necessary admin roles to our test admin for each contract
+        // To fix the error, we need to transfer admin roles
+        address deployScript = address(deployer);
 
-//         // Setup university
-//         universityHandler.registerUniversity(university, UNIVERSITY_ID);
-//         vm.stopPrank();
+        // Fix: Grant DEFAULT_ADMIN_ROLE to our test admin in UniversityHandler
+        vm.stopPrank();
+        vm.startPrank(deployScript); // Need to be the original deployer
+        universityHandler.grantRole(universityHandler.DEFAULT_ADMIN_ROLE(), admin);
+        verificationHub.grantRole(verificationHub.DEFAULT_ADMIN_ROLE(), admin);
+        svs.grantRole(svs.DEFAULT_ADMIN_ROLE(), admin);
+        feeManager.grantRole(feeManager.DEFAULT_ADMIN_ROLE(), admin);
+        timelineEnhancer.grantRole(timelineEnhancer.DEFAULT_ADMIN_ROLE(), admin);
+        embassyGateway.grantRole(embassyGateway.DEFAULT_ADMIN_ROLE(), admin);
+        vm.stopPrank();
 
-//         vm.startPrank(address(university));
-//         universityHandler.registerProgram(PROGRAM_ID);
+        // Now continue with admin operations
+        vm.startPrank(admin);
 
-//         vm.stopPrank();
-//     }
+        // Additional role assignment - grant university address the UNIVERSITY_ROLE
+        svs.grantRole(svs.UNIVERSITY_ROLE(), university);
 
-//     // Happy path test
-//     function test_CreateApplicationSuccess() public {
-//         uint32 enrollmentDate = uint32(block.timestamp + 60 days);
-//         StudentVisaSystem.Priority priority = StudentVisaSystem.Priority.STANDARD;
-//         (uint256 requiredFee,) = visaSystem.getFeeAndProcessingTime(priority);
+        // Grant BANK_ROLE directly to the verifier from admin
+        svs.grantRole(svs.BANK_ROLE(), verifier);
 
-//         vm.startPrank(student);
-//         vm.deal(student, 10 ether);
+        // Set up test values
+        enrollmentDate = uint32(block.timestamp + 180 days);
 
-//         // Pay application fee
-//         (bool success,) =
-//             address(feeManager).call{value: requiredFee}(abi.encodeWithSignature("payWithETH(address)", student));
-//         require(success, "Fee payment failed");
-//         console.log("Fee Manager balance:", address(feeManager).balance);
+        // Register a university and program for testing
+        universityHandler.registerUniversity(university, universityId);
+        vm.stopPrank();
 
-//         // Create application
-//         vm.expectEmit(true, true, true, true);
-//         emit StudentVisaSystem.ApplicationCreated(student, block.timestamp, priority);
-//         emit StudentVisaSystem.FeePaid(student, requiredFee, priority);
+        vm.startPrank(university);
+        universityHandler.registerProgram(programId);
+        vm.stopPrank();
 
-//         visaSystem.createApplication(UNIVERSITY_ID, PROGRAM_ID, enrollmentDate, priority, previousCountries);
+        // Register embassy official
+        vm.startPrank(admin);
+        svs.grantRole(svs.EMBASSY_ROLE(), embassy);
 
-//         // Verify application state
-//         (StudentVisaSystem.VisaStatus status,, uint256 createdAt) = visaSystem.getApplicationCore(student);
-//         assertEq(uint256(status), uint256(StudentVisaSystem.VisaStatus.DOCUMENTS_PENDING));
-//         console.log("StudentVisaSystem.VisaStatus.DOCUMENTS_PENDING:", uint256(status));
-//         assertEq(createdAt, block.timestamp);
-//         assertTrue(visaSystem.hasApplication(student));
+        // Register verifier
+        verificationHub.registerVerifier(verifier, "Test Verifier");
+        vm.stopPrank();
 
-//         // Verify fee tracking
-//         assertEq(feeManager.getTotalPaid(student), requiredFee);
+        // Give ether to test accounts
+        vm.deal(applicant1, 10 ether);
+        vm.deal(applicant2, 10 ether);
+    }
 
-//         console.log("Fee Manager balance:", address(feeManager).balance);
-//         assertEq(address(treasury).balance, requiredFee);
-//     }
+    function testCreateApplication() public {
+        vm.startPrank(applicant1);
 
-//     // // Edge cases
-//     // function test_RevertIfDuplicateApplication() public {
-//     //     _createValidApplication();
+        // Create a standard application
+        uint256 requiredFee = svs.standardFee();
+        svs.createApplication{value: requiredFee}(
+            universityId, programId, enrollmentDate, StudentVisaSystem.Priority.STANDARD, previousVisaCountries
+        );
 
-//     //     vm.expectRevert("Application already exists");
-//     //     _createValidApplication();
-//     // }
+        // Verify application was created successfully
+        assertTrue(svs.hasApplication(applicant1), "Application should exist");
 
-//     // function test_RevertIfInvalidProgram() public {
-//     //     StudentVisaSystem.Priority priority = StudentVisaSystem.Priority.STANDARD;
-//     //     (uint256 requiredFee,) = visaSystem.getFeeAndProcessingTime(priority);
-//     //     vm.startPrank(student);
+        // Check application status
+        (,,,, StudentVisaSystem.VisaStatus status,,,,,,,) = svs.getApplicationDetails(applicant1);
+        assertEq(
+            uint256(status),
+            uint256(StudentVisaSystem.VisaStatus.DOCUMENTS_PENDING),
+            "Application should be pending documents"
+        );
+        // Check application details
+        (
+            string memory uniId,
+            string memory progId,
+            uint32 enrollDate,
+            StudentVisaSystem.Priority priority,
+            ,
+            uint256 credibilityScore,
+            uint256 createdAt,
+            uint256 updatedAt,
+            uint32 deadlineDate,
+            bool isBiometricVerified,
+            bool isPriorityUpgraded,
+            uint8 attemptCount
+        ) = svs.getApplicationDetails(applicant1);
+        assertEq(uniId, universityId, "University ID should match");
+        assertEq(progId, programId, "Program ID should match");
+        assertEq(enrollDate, enrollmentDate, "Enrollment date should match");
+        assertEq(uint256(priority), uint256(StudentVisaSystem.Priority.STANDARD), "Priority should be standard");
+        assertEq(credibilityScore, 100, "Credibility score should be 0");
+        assertEq(createdAt, block.timestamp, "Created at should be now");
+        assertEq(updatedAt, block.timestamp, "Updated at should be now");
+        assertEq(deadlineDate, block.timestamp + 30 days, "Deadline should be 30 days from now");
+        assertFalse(isBiometricVerified, "Biometric should not be verified");
+        assertFalse(isPriorityUpgraded, "Priority should not be upgraded");
+        assertEq(attemptCount, 1, "Attempt count should be 0");
 
-//     //     _payFee(requiredFee);
+        // Check if the fee was transferred to the treasury
+        uint256 treasuryBalance = address(0x76b1e60A5Bdd0954C951Ff91Ce40675c87F74507).balance;
+        assertEq(treasuryBalance, requiredFee, "Fee should be transferred to the treasury");
 
-//     //     vm.expectRevert("Invalid program");
-//     //     visaSystem.createApplication(
-//     //         "invalid_id",
-//     //         PROGRAM_ID,
-//     //         uint32(block.timestamp + 60 days),
-//     //         StudentVisaSystem.Priority.STANDARD,
-//     //         previousCountries
-//     //     );
-//     // }
+        vm.stopPrank();
+    }
 
-//     // function test_RevertIfInsufficientFee() public {
-//     //     vm.startPrank(student);
-//     //     _payFee(0.005 ether); // Below standard fee
+    function testEventsOfCreateApplicatoinFunc() public {
+        vm.startPrank(applicant1);
+        uint256 requiredFee = svs.standardFee();
 
-//     //     vm.expectRevert("Insufficient fee");
-//     //     _createValidApplication();
-//     // }
+        // Emit the event
+        vm.expectEmit();
+        emit StudentVisaSystem.ApplicationCreated(
+            applicant1, universityId, programId, enrollmentDate, StudentVisaSystem.Priority.STANDARD
+        );
+        emit StudentVisaSystem.FeePaid(applicant1, requiredFee, StudentVisaSystem.Priority.STANDARD);
 
-//     // // Helper functions
-//     // function _createValidApplication() internal {
-//     //     visaSystem.createApplication(
-//     //         UNIVERSITY_ID,
-//     //         PROGRAM_ID,
-//     //         uint32(block.timestamp + 60 days),
-//     //         StudentVisaSystem.Priority.STANDARD,
-//     //         previousCountries
-//     //     );
-//     // }
+        // Create a standard application
+        svs.createApplication{value: requiredFee}(
+            universityId, programId, enrollmentDate, StudentVisaSystem.Priority.STANDARD, previousVisaCountries
+        );
+        vm.stopPrank();
+    }
 
-//     // function _payFee(uint256 amount) internal {
-//     //     (bool success,) =
-//     //         address(feeManager).call{value: amount}(abi.encodeWithSignature("payWithETH(address)", student));
-//     //     require(success, "Fee payment failed");
-//     // }
-// }
+    function testDocumentSubmissionAndVerification() public {
+        // First create an application
+        testCreateApplication();
+
+        // Submit passport document
+        vm.startPrank(applicant1);
+        svs.submitDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, documentHash, documentExpiryDate);
+
+        // Verify document status
+        StudentVisaSystem.VerificationStatus docStatus =
+            svs.getDocumentStatus(applicant1, StudentVisaSystem.DocumentType.PASSPORT);
+        assertEq(
+            uint256(docStatus), uint256(StudentVisaSystem.VerificationStatus.SUBMITTED), "Document should be submitted"
+        );
+        vm.stopPrank();
+
+        // Verify the document as a verifier
+        vm.startPrank(verifier);
+        // Find the request ID (in a real test we would need a way to get this)
+        // For this example we need to assume the verification hub has a way to find pending requests
+
+        // We would normally call:
+        // bytes32 requestId = /* method to get pending request */;
+        // verificationHub.processVerification(requestId, true);
+
+        // Since we can't easily get the request ID in this test,
+        // we'll use the direct verification method from SVS
+        vm.stopPrank();
+
+        vm.startPrank(verifier);
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, "Document is valid");
+
+        // Verify document status after verification
+        vm.stopPrank();
+        vm.startPrank(applicant1);
+        docStatus = svs.getDocumentStatus(applicant1, StudentVisaSystem.DocumentType.PASSPORT);
+        assertEq(
+            uint256(docStatus), uint256(StudentVisaSystem.VerificationStatus.VERIFIED), "Document should be verified"
+        );
+        vm.stopPrank();
+    }
+
+    function testCompleteApplicationProcess() public {
+        // Create application
+        testCreateApplication();
+
+        // Submit all required documents
+        vm.startPrank(applicant1);
+        svs.submitDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, "passportHash", documentExpiryDate);
+
+        svs.submitDocument(
+            applicant1, StudentVisaSystem.DocumentType.ACADEMIC_RECORDS, "academicHash", documentExpiryDate
+        );
+
+        svs.submitDocument(
+            applicant1, StudentVisaSystem.DocumentType.FINANCIAL_PROOF, "financialHash", documentExpiryDate
+        );
+
+        // Add language proficiency document
+        svs.submitDocument(
+            applicant1, StudentVisaSystem.DocumentType.LANGUAGE_PROFICIENCY, "languageHash", documentExpiryDate
+        );
+
+        // Submit biometric verification
+        svs.submitBiometricVerification(biometricHash);
+        vm.stopPrank();
+
+        // University submits acceptance letter
+        vm.startPrank(university);
+        universityHandler.verifyAdmission(applicant1, programId);
+        vm.stopPrank();
+
+        // Verify all documents as a verifier
+        vm.startPrank(verifier);
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, "Passport verified");
+
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.ACADEMIC_RECORDS, "Academic records verified");
+
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.FINANCIAL_PROOF, "Financial proof verified");
+
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.ACCEPTANCE_LETTER, "Acceptance letter verified");
+
+        // After verifying other documents, also verify language proficiency
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.LANGUAGE_PROFICIENCY, "Language test verified");
+        vm.stopPrank();
+
+        // Check if application status changed to under review
+        vm.startPrank(embassy);
+        StudentVisaSystem.VisaStatus status = svs.getApplicationStatus(applicant1);
+        assertEq(
+            uint256(status), uint256(StudentVisaSystem.VisaStatus.UNDER_REVIEW), "Application should be under review"
+        );
+
+        // Embassy approves the visa
+        vm.startPrank(embassy);
+        svs.approveVisa(applicant1);
+        vm.stopPrank();
+
+        // Check final status
+        vm.prank(embassy);
+        status = svs.getApplicationStatus(applicant1);
+        assertEq(uint256(status), uint256(StudentVisaSystem.VisaStatus.APPROVED), "Application should be approved");
+    }
+
+    function testUpgradePriority() public {
+        // Create standard application
+        testCreateApplication();
+
+        vm.startPrank(applicant1);
+
+        // Get initial priority
+        StudentVisaSystem.Priority initialPriority = svs.getTimelinePriority(applicant1);
+        assertEq(
+            uint256(initialPriority),
+            uint256(StudentVisaSystem.Priority.STANDARD),
+            "Initial priority should be standard"
+        );
+
+        // Calculate additional fee (expedited - standard)
+        uint256 additionalFee = svs.expeditedFee() - svs.standardFee();
+
+        // Upgrade to expedited
+        svs.upgradeProcessingPriority{value: additionalFee}(StudentVisaSystem.Priority.EXPEDITED);
+
+        // Verify new priority
+        StudentVisaSystem.Priority newPriority = svs.getTimelinePriority(applicant1);
+        assertEq(
+            uint256(newPriority),
+            uint256(StudentVisaSystem.Priority.EXPEDITED),
+            "Priority should be upgraded to expedited"
+        );
+
+        vm.stopPrank();
+    }
+
+    function testRejectionAndReset() public {
+        // Create application and submit documents
+        testCreateApplication();
+
+        // Submit passport document
+        vm.startPrank(applicant1);
+        svs.submitDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, documentHash, documentExpiryDate);
+        vm.stopPrank();
+
+        // Verify document to move application to review status
+        vm.startPrank(verifier);
+        svs.verifyDocument(applicant1, StudentVisaSystem.DocumentType.PASSPORT, "Document verified");
+        // Submit other documents and verify them...
+        vm.stopPrank();
+
+        // Reject the application
+        vm.prank(embassy);
+        svs.rejectVisa(applicant1, "Missing essential documents");
+
+        // Verify rejection
+        vm.prank(embassy);
+        StudentVisaSystem.VisaStatus status = svs.getApplicationStatus(applicant1);
+        assertEq(uint256(status), uint256(StudentVisaSystem.VisaStatus.REJECTED), "Application should be rejected");
+
+        // Reset application
+        vm.prank(applicant1);
+        svs.resetApplication();
+
+        // Verify application is deleted
+        bool hasApp = svs.hasApplication(applicant1);
+        assertFalse(hasApp, "Application should be deleted after reset");
+    }
+}

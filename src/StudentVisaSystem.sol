@@ -133,6 +133,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         uint256 createdAt;
         uint256 updatedAt;
         string universityId;
+        string programId;
         Timeline timeline;
         uint256 credibilityScore;
         mapping(address => bool) authorizedViewers;
@@ -171,7 +172,9 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     uint256 public totalApproved;
     uint256 public totalRejected;
 
-    event ApplicationCreated(address indexed applicant, uint256 timestamp, Priority priority);
+    event ApplicationCreated(
+        address indexed applicant, string universityId, string programId, uint32 enrollmentDate, Priority priority
+    );
     event DocumentSubmitted(address indexed applicant, DocumentType docType, string documentHash);
     event DocumentVerified(address indexed applicant, DocumentType docType, address verifier);
     event DocumentRejected(address indexed applicant, DocumentType docType, address verifier, string reason);
@@ -224,7 +227,7 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
         // Initialize application
         Application storage app = applications[msg.sender];
-        _initializeApplicationCore(app, universityId);
+        _initializeApplicationCore(app, universityId, programId);
         _initializeApplicationTimeline(app, enrollmentDate, priority, processingTime);
         _handlePreviousCountries(app, previousVisaCountries);
 
@@ -232,7 +235,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         hasApplication[msg.sender] = true;
         totalApplications++;
 
-        emit ApplicationCreated(msg.sender, block.timestamp, priority);
+        // More comprehensive event with all key application details
+        emit ApplicationCreated(msg.sender, universityId, programId, enrollmentDate, priority);
         emit FeePaid(msg.sender, requiredFee, priority);
     }
 
@@ -473,10 +477,15 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // Internal View and Pure Functions
     /////////////////////////////////////
 
-    function _initializeApplicationCore(Application storage app, string calldata universityId) internal {
+    function _initializeApplicationCore(
+        Application storage app,
+        string calldata universityId,
+        string calldata programId
+    ) internal {
         app.applicant = msg.sender;
         app.status = VisaStatus.DOCUMENTS_PENDING;
         app.universityId = universityId;
+        app.programId = programId;
         app.credibilityScore = 100; // Default score
         app.feesPaid = true;
         app.applicationFee = msg.value;
@@ -649,12 +658,62 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     // External & Public View & Pure Functions
     ////////////////////////////////////////////////////////////////////////////
 
-    // Getters for application information
-    function getApplicationStatus(address applicant) external view returns (VisaStatus) {
+    // Replace the multiple getter functions with a single comprehensive function
+    function getApplicationDetails(address applicant)
+        external
+        view
+        returns (
+            string memory universityId,
+            string memory programId,
+            uint32 enrollmentDate,
+            Priority priority,
+            VisaStatus status,
+            uint256 credibilityScore,
+            uint256 createdAt,
+            uint256 updatedAt,
+            uint32 deadlineDate,
+            bool isBiometricVerified,
+            bool isPriorityUpgraded,
+            uint8 attemptCount
+        )
+    {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        return applications[applicant].status;
+
+        // Check authorization for non-public details
+        bool isAuthorized = msg.sender == applicant || applications[applicant].authorizedViewers[msg.sender]
+            || hasRole(ADMIN_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender);
+
+        Application storage app = applications[applicant];
+
+        // Return all application details
+        return (
+            app.universityId,
+            app.programId,
+            app.timeline.targetDate,
+            app.timeline.priority,
+            app.status,
+            isAuthorized ? app.credibilityScore : 0,
+            app.createdAt,
+            app.updatedAt,
+            app.timeline.deadlineDate,
+            app.isBiometricVerified,
+            app.isPriorityUpgraded,
+            app.attemptCount
+        );
     }
 
+    // Keep getApplicationCore for backward compatibility with external systems
+    function getApplicationCore(address applicant)
+        external
+        view
+        returns (VisaStatus status, uint256 credibilityScore, uint256 createdAt)
+    {
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound(); // Added this check
+        Application storage app = applications[applicant];
+        return (app.status, app.credibilityScore, app.createdAt);
+    }
+
+    // Keep document-specific getter functions
     function getDocumentStatus(address applicant, DocumentType docType) external view returns (VerificationStatus) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
@@ -676,37 +735,20 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         return applications[applicant].credibilityScore;
     }
 
-    function getApplicationDetails(address applicant)
-        external
-        view
-        returns (
-            VisaStatus status,
-            uint256 credibilityScore,
-            uint256 createdAt,
-            uint256 updatedAt,
-            Timeline memory timeline
-        )
-    {
-        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        Application storage app = applications[applicant];
-        return (app.status, app.credibilityScore, app.createdAt, app.updatedAt, app.timeline);
-    }
-
-    function getApplicationCore(address applicant)
-        external
-        view
-        returns (VisaStatus status, uint256 credibilityScore, uint256 createdAt)
-    {
-        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound(); // Added this check
-        Application storage app = applications[applicant];
-        return (app.status, app.credibilityScore, app.createdAt);
-    }
-
     function getTimelinePriority(address applicant) external view returns (Priority) {
         return applications[applicant].timeline.priority;
     }
 
     function getTimelineDeadline(address applicant) external view returns (uint256) {
         return applications[applicant].timeline.deadlineDate;
+    }
+
+    function getApplicationStatus(address applicant) external view returns (VisaStatus status) {
+        if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
+        if (
+            msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]
+                && !hasRole(ADMIN_ROLE, msg.sender) && !hasRole(EMBASSY_ROLE, msg.sender)
+        ) revert StudentVisaSystem__Unauthorized();
+        return applications[applicant].status;
     }
 }
