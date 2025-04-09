@@ -23,7 +23,46 @@ A decentralized application for managing student visa applications using blockch
 - **Development Framework**: Foundry
 - **Security**: OpenZeppelin Contracts
 - **Testing**: Forge with Solidity tests
-- **Network**: Scroll Sepolia Testnet and Vanguard Vanar Sepolia
+- **Network**: Ethereum Sepolia, Scroll Sepolia Testnet and Vanguard Vanar Sepolia
+
+## Deployed Contracts (Ethereum Sepolia)
+
+# deployed on Anvil
+
+== Return ==
+svs: contract StudentVisaSystem 0x5FbDB2315678afecb367f032d93F642f64180aa3
+embassyGateway: contract EmbassyGateway 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
+feeManager: contract FeeManager 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+timelineEnhancer: contract TimelineEnhancer 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+universityHandler: contract UniversityHandler 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+verificationHub: contract VerificationHub 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+
+== Logs ==
+  Deployment complete. Contract addresses:
+  StudentVisaSystem: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+  EmbassyGateway: 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
+  FeeManager: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+  TimelineEnhancer: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+  UniversityHandler: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+  VerificationHub: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+
+
+All contracts are verified on Ethereum Sepolia Testnet:
+
+0: contract StudentVisaSystem 0xE57f598BaA132F479862eC7b9AA52E792E3282A7
+1: contract EmbassyGateway 0x611646DE9FF0615249652939E3ee2813D35Eca10
+2: contract FeeManager 0x6Ad58B6725D603f593b201b1cd3B760Be6e1d235
+3: contract TimelineEnhancer 0xe492a1868F986255E8de329B77d9beFEAD320D90
+4: contract UniversityHandler 0x024a9f709e15F9Bd0B4a1535E1c4a740dCa8893D
+5: contract VerificationHub 0x2b5DF1B6BD26602188497D8F13C45A79932d2a4f
+
+- **StudentVisaSystem**: [`0xbe051893Ba4E05E57daF9D0e822aE09D9c811D03`](https://sepolia.etherscan.io/address/0xbe051893Ba4E05E57daF9D0e822aE09D9c811D03#code)
+- **TimelineEnhancer**: [`0xE0dd9085B5452D220178f967179eCa78d061318c`](https://sepolia.etherscan.io/address/0xE0dd9085B5452D220178f967179eCa78d061318c#code)
+- **FeeManager**: [`0x40303B667032BBEBb4724768aDeC268F19Fd9aa2`](https://sepolia.etherscan.io/address/0x40303B667032BBEBb4724768aDeC268F19Fd9aa2#code)
+- **VerificationHub**: [`0xCB672d850aCB76f2f089672F69e29e7Eb4B45D0f`](https://sepolia.etherscan.io/address/0xCB672d850aCB76f2f089672F69e29e7Eb4B45D0f#code)
+- **UniversityHandler**: [`0xFCcc2684f64F9814835796D34cFf0aEE2b33A555`](https://sepolia.etherscan.io/address/0xFCcc2684f64F9814835796D34cFf0aEE2b33A555#code)
+- **EmbassyGateway**: [`0xD2b5E14f7242c45eA6596fc43cee0d016f61923a`](https://sepolia.etherscan.io/address/0xD2b5E14f7242c45eA6596fc43cee0d016f61923a#code)
+
 
 ## Deployed Contracts (Scroll Sepolia)
 

@@ -79,6 +79,7 @@ contract EmbassyGateway is IEmbassyGateway, AccessControl {
 
     // Get all document requests for an applicant
     function getDocumentRequests(address applicant) external view returns (string[] memory) {
+        // No auth checks to remove, this function is already open
         return documentRequests[applicant];
     }
 

@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {IUniversityHandler} from "./UniversityHandler.sol";
+import {IUniversityHandler} from "./interface/IUniversityHandler.sol";
 import {VerificationHub} from "./VerificationHub.sol";
 import {TimelineEnhancer} from "./TimelineEnhancer.sol";
 import {IFeeManager} from "./interface/IFeeManager.sol";
@@ -203,7 +203,18 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         Priority priority,
         string[] calldata previousVisaCountries
     ) external payable {
-        if (hasApplication[msg.sender]) revert StudentVisaSystem__ApplicationAlreadyExists();
+        // Check if the user has an application that is not in REJECTED state
+        if (hasApplication[msg.sender]) {
+            // If the application is rejected, automatically reset it
+            // Otherwise, revert with the existing error
+            if (applications[msg.sender].status == VisaStatus.REJECTED) {
+                // Automatically delete the rejected application
+                delete applications[msg.sender];
+            } else {
+                revert StudentVisaSystem__ApplicationAlreadyExists();
+            }
+        }
+
         if (enrollmentDate <= block.timestamp) revert StudentVisaSystem__EnrollmentDateMustBeInFuture();
         if (enrollmentDate >= block.timestamp + 365 days) revert StudentVisaSystem__EnrollmentDateTooFar();
         if (!universityHandler.isValidProgram(universityId, programId)) revert StudentVisaSystem__InvalidProgram();
@@ -454,6 +465,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
         emit ApplicationStatusUpdated(applicant, newStatus);
     }
 
+    // You can also update the resetApplication function documentation
+    // to indicate that manual reset is only needed in special cases
     function resetApplication() external {
         if (applications[msg.sender].status != VisaStatus.REJECTED) revert StudentVisaSystem__ApplicationNotRejected();
 
@@ -569,8 +582,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function _isAuthorizedVerifier() internal view returns (bool) {
-        return
-            hasRole(UNIVERSITY_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender) || hasRole(BANK_ROLE, msg.sender);
+        return hasRole(UNIVERSITY_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender)
+            || hasRole(BANK_ROLE, msg.sender) || hasRole(VERIFICATION_HUB_ROLE, msg.sender);
     }
 
     function _validateDocumentVerification(Document storage doc) internal view {
@@ -679,20 +692,17 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
-        // Check authorization for non-public details
-        bool isAuthorized = msg.sender == applicant || applications[applicant].authorizedViewers[msg.sender]
-            || hasRole(ADMIN_ROLE, msg.sender) || hasRole(EMBASSY_ROLE, msg.sender);
-
+        // Remove authentication check
         Application storage app = applications[applicant];
 
-        // Return all application details
+        // Return all application details (including sensitive data)
         return (
             app.universityId,
             app.programId,
             app.timeline.targetDate,
             app.timeline.priority,
             app.status,
-            isAuthorized ? app.credibilityScore : 0,
+            app.credibilityScore, // Now always return full score
             app.createdAt,
             app.updatedAt,
             app.timeline.deadlineDate,
@@ -717,21 +727,14 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
     function getDocumentStatus(address applicant, DocumentType docType) external view returns (VerificationStatus) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
-        if (msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]) {
-            revert StudentVisaSystem__Unauthorized();
-        }
-
+        // Remove authentication check
         return applications[applicant].documents[docType].status;
     }
 
     function getCredibilityScore(address applicant) external view returns (uint256) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
 
-        if (
-            msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]
-                && !hasRole(ADMIN_ROLE, msg.sender) && !hasRole(EMBASSY_ROLE, msg.sender)
-        ) revert StudentVisaSystem__Unauthorized();
-
+        // Remove authentication check
         return applications[applicant].credibilityScore;
     }
 
@@ -745,10 +748,8 @@ contract StudentVisaSystem is AccessControl, Pausable, ReentrancyGuard {
 
     function getApplicationStatus(address applicant) external view returns (VisaStatus status) {
         if (!hasApplication[applicant]) revert StudentVisaSystem__ApplicationNotFound();
-        if (
-            msg.sender != applicant && !applications[applicant].authorizedViewers[msg.sender]
-                && !hasRole(ADMIN_ROLE, msg.sender) && !hasRole(EMBASSY_ROLE, msg.sender)
-        ) revert StudentVisaSystem__Unauthorized();
+
+        // Remove authentication check
         return applications[applicant].status;
     }
 }

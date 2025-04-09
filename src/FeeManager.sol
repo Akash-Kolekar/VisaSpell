@@ -36,6 +36,7 @@ contract FeeManager is IFeeManager, AccessControl {
     }
 
     function getTotalPaid(address applicant) external view returns (uint256) {
+        // No auth checks to remove, this function is already open
         return totalPayments[applicant];
     }
 
